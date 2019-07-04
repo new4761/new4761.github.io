@@ -1,0 +1,50 @@
+    <template id="basic-scripts-element">
+ 	<!-- basic scripts -->
+
+		<!--[if !IE]> -->
+		<script src="assets/js/jquery-2.1.4.min.js"></script>
+
+		<!-- <![endif]-->
+
+		<!--[if IE]>
+<script src="assets/js/jquery-1.11.3.min.js"></script>
+<![endif]-->
+		<script type="text/javascript">
+			if('ontouchstart' in document.documentElement) document.write("<script src='assets/js/jquery.mobile.custom.min.js'>"+"<"+"/script>");
+		</script>
+		<script src="assets/js/bootstrap.min.js"></script>
+
+		<!-- page specific plugin scripts -->
+
+		<!-- ace scripts -->
+		<script src="assets/js/ace-elements.min.js"></script>
+		<script src="assets/js/ace.min.js"></script>
+
+	<!-- inline scripts related to this page -->
+	<script src="main.js"></script>
+    <script src="assets/js/ace-extra.min.js"></script>
+    
+</template>
+<script>
+        (function () {
+            var importDoc = document.currentScript.ownerDocument; // importee
+    
+            // Define and register <shadow-element>
+            // that uses Shadow DOM and a template.
+            var proto = Object.create(HTMLElement.prototype);
+    
+            proto.createdCallback = function () {
+                // get template in import
+                var template = importDoc.querySelector('#basic-scripts-element');
+    
+                // import template into
+                var clone = document.importNode(template.content, true);
+    
+                var root = this;
+                root.appendChild(clone);
+    
+            };
+    
+            document.registerElement('basic-scripts-element', { prototype: proto });
+        })();
+    </script>
