@@ -1,0 +1,1170 @@
+{
+  "schema_version": "1.0.0",
+  "elements": [
+    {
+      "description": "",
+      "summary": "",
+      "path": "paper-grid.js",
+      "properties": [
+        {
+          "name": "cellHeight",
+          "type": "number",
+          "description": "Defines the height in pixels of the grid unit.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 78,
+              "column": 12
+            },
+            "end": {
+              "line": 83,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "100"
+        },
+        {
+          "name": "cellWidth",
+          "type": "number",
+          "description": "Defines the width in pixels of the grid unit.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 88,
+              "column": 12
+            },
+            "end": {
+              "line": 93,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "100"
+        },
+        {
+          "name": "cellMargin",
+          "type": "number",
+          "description": "Defines the margin in pixels between grid units.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 98,
+              "column": 12
+            },
+            "end": {
+              "line": 103,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "0"
+        },
+        {
+          "name": "minWidth",
+          "type": "number | null | undefined",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 104,
+              "column": 12
+            },
+            "end": {
+              "line": 108,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "1"
+        },
+        {
+          "name": "maxWidth",
+          "type": "number | null | undefined",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 109,
+              "column": 12
+            },
+            "end": {
+              "line": 113,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Number"
+            }
+          }
+        },
+        {
+          "name": "minHeight",
+          "type": "number | null | undefined",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 114,
+              "column": 12
+            },
+            "end": {
+              "line": 118,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "1"
+        },
+        {
+          "name": "maxHeight",
+          "type": "number | null | undefined",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 119,
+              "column": 12
+            },
+            "end": {
+              "line": 123,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Number"
+            }
+          }
+        },
+        {
+          "name": "colCount",
+          "type": "number",
+          "description": "Defines the number of columns of the grid (its width in grid unit).",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 128,
+              "column": 12
+            },
+            "end": {
+              "line": 133,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "10"
+        },
+        {
+          "name": "rowCount",
+          "type": "number",
+          "description": "Defines the number of rows of the grid (its height in grid unit).",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 138,
+              "column": 12
+            },
+            "end": {
+              "line": 143,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Number"
+            }
+          },
+          "defaultValue": "10"
+        },
+        {
+          "name": "colAutogrow",
+          "type": "Boolean",
+          "description": "Whether the grid columns count can increase or not (auto expand while dragging).",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 148,
+              "column": 12
+            },
+            "end": {
+              "line": 152,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "rowAutogrow",
+          "type": "Boolean",
+          "description": "Whether the grid rows count can increase or not (auto expand while dragging).",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 157,
+              "column": 12
+            },
+            "end": {
+              "line": 161,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "animated",
+          "type": "boolean",
+          "description": "Whether the moves and resizes are animated or not.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 166,
+              "column": 12
+            },
+            "end": {
+              "line": 171,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"computeStyles\"",
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "draggable",
+          "type": "boolean",
+          "description": "Enable the drag n drop (of the grid's tiles) capability.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 176,
+              "column": 12
+            },
+            "end": {
+              "line": 181,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"_upgradeEvents\"",
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "resizable",
+          "type": "boolean",
+          "description": "Enable the resize (of the grid's tiles) capability.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 186,
+              "column": 12
+            },
+            "end": {
+              "line": 191,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "observer": "\"_upgradeEvents\"",
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "overlappable",
+          "type": "boolean",
+          "description": "Allow tiles to overlap each other.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 196,
+              "column": 12
+            },
+            "end": {
+              "line": 200,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        },
+        {
+          "name": "autoAdjustment",
+          "type": "Boolean",
+          "description": "Enable Auto Adjustment to fit the browser window",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 205,
+              "column": 12
+            },
+            "end": {
+              "line": 208,
+              "column": 13
+            }
+          },
+          "metadata": {
+            "polymer": {
+              "attributeType": "Boolean"
+            }
+          },
+          "defaultValue": "false"
+        }
+      ],
+      "methods": [
+        {
+          "name": "_adjustToWindow",
+          "description": "Adapt the grid to the window",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 216,
+              "column": 4
+            },
+            "end": {
+              "line": 238,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "ready",
+          "description": "",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 254,
+              "column": 4
+            },
+            "end": {
+              "line": 260,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "connectedCallback",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 262,
+              "column": 4
+            },
+            "end": {
+              "line": 265,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "disconnectedCallback",
+          "description": "",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 267,
+              "column": 4
+            },
+            "end": {
+              "line": 272,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_upgradeEvents",
+          "description": "Handle event attachment when a mutation occurs. If call without any mutation update all current tiles/children.",
+          "privacy": "protected",
+          "sourceRange": {
+            "start": {
+              "line": 279,
+              "column": 4
+            },
+            "end": {
+              "line": 298,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "record"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_toggleEvents",
+          "description": "Adds and removes tracking events depending on the `resizable` and `draggable` properties.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 305,
+              "column": 4
+            },
+            "end": {
+              "line": 343,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "node",
+              "type": "HTMLElement",
+              "description": "Node to add/remove listener on."
+            },
+            {
+              "name": "removed",
+              "type": "Boolean",
+              "description": "Whether the node has been removed or added."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "computeStyles",
+          "description": "Compute the style sheet of the grid depending on its attributes/properties.\n\nIt allows hot update of the grid attributes/properties, generating an updated style sheet.\n\nIMPORTANT: If you have several `<paper-grid>` in your page, be sure to give them a proper `id` attribute, so they can have their own style sheet without any collision.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 351,
+              "column": 4
+            },
+            "end": {
+              "line": 400,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "ensureSpace",
+          "description": "Increase the grid size if the given tile is out of grid bounds.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 405,
+              "column": 4
+            },
+            "end": {
+              "line": 412,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "tile",
+              "type": "HTMLElement",
+              "description": "Tile to fit in the grid bounds."
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_handleMove",
+          "description": "Process events related to a player being moved.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 418,
+              "column": 4
+            },
+            "end": {
+              "line": 485,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_handleResize",
+          "description": "Process events related to a player being resized.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 491,
+              "column": 4
+            },
+            "end": {
+              "line": 592,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "e"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_safePreventDefault",
+          "description": "Check the existence of the #preventDefault method before calling it.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 598,
+              "column": 4
+            },
+            "end": {
+              "line": 600,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "event",
+              "type": "Event",
+              "description": "the event to prevent"
+            }
+          ],
+          "return": {
+            "type": "void"
+          }
+        },
+        {
+          "name": "_isOverlapping",
+          "description": "Checks for overlaps with other tiles.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 610,
+              "column": 4
+            },
+            "end": {
+              "line": 629,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "col",
+              "type": "Number"
+            },
+            {
+              "name": "row",
+              "type": "Number"
+            },
+            {
+              "name": "width",
+              "type": "Number"
+            },
+            {
+              "name": "height",
+              "type": "Number"
+            },
+            {
+              "name": "exceptions",
+              "defaultValue": "[]"
+            }
+          ],
+          "return": {
+            "type": "(Boolean | Element)",
+            "desc": "Returns either `false` if no overlap is found or the overlapping element itself."
+          }
+        },
+        {
+          "name": "_isWithinConstraints",
+          "description": "Checks if the given width or height as `value` is within grid constraints.",
+          "privacy": "private",
+          "sourceRange": {
+            "start": {
+              "line": 661,
+              "column": 4
+            },
+            "end": {
+              "line": 663,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "value",
+              "type": "Number",
+              "description": "in grid unit."
+            },
+            {
+              "name": "min",
+              "type": "Number",
+              "defaultValue": "1",
+              "description": "in grid unit."
+            },
+            {
+              "name": "max",
+              "type": "Number",
+              "defaultValue": "Infinity",
+              "description": "in grid unit."
+            }
+          ],
+          "return": {
+            "type": "Boolean",
+            "desc": "true when within constraints, otherwise false."
+          }
+        },
+        {
+          "name": "getCoordinates",
+          "description": "Extract the position attributes (`row`, `col`) and size attributes (`width`, `height`) of the given tile element.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 669,
+              "column": 4
+            },
+            "end": {
+              "line": 676,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "tile",
+              "type": "HTMLElement",
+              "description": "Tile to read attributes from."
+            }
+          ],
+          "return": {
+            "type": "{col: number, row: number, width: number, height: number}",
+            "desc": "The position and size of the given tile as raw object."
+          }
+        },
+        {
+          "name": "getClosestPosition",
+          "description": "Find the closest player position (column and row as indexes) for the given X and Y.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 686,
+              "column": 4
+            },
+            "end": {
+              "line": 710,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "x",
+              "type": "number",
+              "description": "position in pixels on X screen axis."
+            },
+            {
+              "name": "y",
+              "type": "number",
+              "description": "position in pixels on Y screen axis."
+            },
+            {
+              "name": "rows",
+              "defaultValue": "1"
+            },
+            {
+              "name": "cols",
+              "defaultValue": "1"
+            },
+            {
+              "name": "floorHalf",
+              "defaultValue": "false"
+            }
+          ]
+        },
+        {
+          "name": "getClosestSize",
+          "description": "Find the closest player size (width and height as grid units) for the given width and height.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 719,
+              "column": 4
+            },
+            "end": {
+              "line": 731,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "width",
+              "type": "number",
+              "description": "width in pixels."
+            },
+            {
+              "name": "height",
+              "type": "number",
+              "description": "height in pixels."
+            },
+            {
+              "name": "maxWidth",
+              "defaultValue": "this.colCount"
+            },
+            {
+              "name": "maxHeight",
+              "defaultValue": "this.rowCount"
+            }
+          ]
+        },
+        {
+          "name": "getResizerHost",
+          "description": "Find the tile element (direct children of `paper-grid`) hosting the given resizer element.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 737,
+              "column": 4
+            },
+            "end": {
+              "line": 743,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [
+            {
+              "name": "resizer",
+              "type": "HTMLElement",
+              "description": "element used as resizer gripper."
+            }
+          ],
+          "return": {
+            "type": "HTMLElement",
+            "desc": "The tile element hosting the resizer."
+          }
+        },
+        {
+          "name": "serialize",
+          "description": "Output as JSON array the current positions and sizes of all tiles.\nRepresents the serialized state of the grid.",
+          "privacy": "public",
+          "sourceRange": {
+            "start": {
+              "line": 750,
+              "column": 4
+            },
+            "end": {
+              "line": 761,
+              "column": 5
+            }
+          },
+          "metadata": {},
+          "params": [],
+          "return": {
+            "type": "Array.<{col: Number, row: Number, width: Number, height: Number}>",
+            "desc": "Array of tile's coordinates (position and size) objects."
+          }
+        }
+      ],
+      "staticMethods": [],
+      "demos": [
+        {
+          "url": "demo/index.html",
+          "description": "Demos"
+        },
+        {
+          "url": "demo/playground.html",
+          "description": "Playground"
+        },
+        {
+          "url": "demo/responsive.html",
+          "description": "Responsiveness"
+        },
+        {
+          "url": "demo/auto-adjustment.html",
+          "description": "Auto Adjustment"
+        }
+      ],
+      "metadata": {},
+      "sourceRange": {
+        "start": {
+          "line": 10,
+          "column": 0
+        },
+        "end": {
+          "line": 762,
+          "column": 1
+        }
+      },
+      "privacy": "public",
+      "superclass": "HTMLElement",
+      "name": "PaperGrid",
+      "attributes": [
+        {
+          "name": "cell-height",
+          "description": "Defines the height in pixels of the grid unit.",
+          "sourceRange": {
+            "start": {
+              "line": 78,
+              "column": 12
+            },
+            "end": {
+              "line": 83,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number"
+        },
+        {
+          "name": "cell-width",
+          "description": "Defines the width in pixels of the grid unit.",
+          "sourceRange": {
+            "start": {
+              "line": 88,
+              "column": 12
+            },
+            "end": {
+              "line": 93,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number"
+        },
+        {
+          "name": "cell-margin",
+          "description": "Defines the margin in pixels between grid units.",
+          "sourceRange": {
+            "start": {
+              "line": 98,
+              "column": 12
+            },
+            "end": {
+              "line": 103,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number"
+        },
+        {
+          "name": "min-width",
+          "description": "",
+          "sourceRange": {
+            "start": {
+              "line": 104,
+              "column": 12
+            },
+            "end": {
+              "line": 108,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number | null | undefined"
+        },
+        {
+          "name": "max-width",
+          "description": "",
+          "sourceRange": {
+            "start": {
+              "line": 109,
+              "column": 12
+            },
+            "end": {
+              "line": 113,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number | null | undefined"
+        },
+        {
+          "name": "min-height",
+          "description": "",
+          "sourceRange": {
+            "start": {
+              "line": 114,
+              "column": 12
+            },
+            "end": {
+              "line": 118,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number | null | undefined"
+        },
+        {
+          "name": "max-height",
+          "description": "",
+          "sourceRange": {
+            "start": {
+              "line": 119,
+              "column": 12
+            },
+            "end": {
+              "line": 123,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number | null | undefined"
+        },
+        {
+          "name": "col-count",
+          "description": "Defines the number of columns of the grid (its width in grid unit).",
+          "sourceRange": {
+            "start": {
+              "line": 128,
+              "column": 12
+            },
+            "end": {
+              "line": 133,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number"
+        },
+        {
+          "name": "row-count",
+          "description": "Defines the number of rows of the grid (its height in grid unit).",
+          "sourceRange": {
+            "start": {
+              "line": 138,
+              "column": 12
+            },
+            "end": {
+              "line": 143,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "number"
+        },
+        {
+          "name": "col-autogrow",
+          "description": "Whether the grid columns count can increase or not (auto expand while dragging).",
+          "sourceRange": {
+            "start": {
+              "line": 148,
+              "column": 12
+            },
+            "end": {
+              "line": 152,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "Boolean"
+        },
+        {
+          "name": "row-autogrow",
+          "description": "Whether the grid rows count can increase or not (auto expand while dragging).",
+          "sourceRange": {
+            "start": {
+              "line": 157,
+              "column": 12
+            },
+            "end": {
+              "line": 161,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "Boolean"
+        },
+        {
+          "name": "animated",
+          "description": "Whether the moves and resizes are animated or not.",
+          "sourceRange": {
+            "start": {
+              "line": 166,
+              "column": 12
+            },
+            "end": {
+              "line": 171,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "boolean"
+        },
+        {
+          "name": "draggable",
+          "description": "Enable the drag n drop (of the grid's tiles) capability.",
+          "sourceRange": {
+            "start": {
+              "line": 176,
+              "column": 12
+            },
+            "end": {
+              "line": 181,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "boolean"
+        },
+        {
+          "name": "resizable",
+          "description": "Enable the resize (of the grid's tiles) capability.",
+          "sourceRange": {
+            "start": {
+              "line": 186,
+              "column": 12
+            },
+            "end": {
+              "line": 191,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "boolean"
+        },
+        {
+          "name": "overlappable",
+          "description": "Allow tiles to overlap each other.",
+          "sourceRange": {
+            "start": {
+              "line": 196,
+              "column": 12
+            },
+            "end": {
+              "line": 200,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "boolean"
+        },
+        {
+          "name": "auto-adjustment",
+          "description": "Enable Auto Adjustment to fit the browser window",
+          "sourceRange": {
+            "start": {
+              "line": 205,
+              "column": 12
+            },
+            "end": {
+              "line": 208,
+              "column": 13
+            }
+          },
+          "metadata": {},
+          "type": "Boolean"
+        }
+      ],
+      "events": [
+        {
+          "type": "CustomEvent",
+          "name": "TheGrid#move",
+          "description": "`move` event when tile is dropped.",
+          "metadata": {}
+        },
+        {
+          "type": "CustomEvent",
+          "name": "TheGrid#resize",
+          "description": "`resize` event when resizer/gripper is dropped.",
+          "metadata": {}
+        }
+      ],
+      "styling": {
+        "cssVariables": [],
+        "selectors": []
+      },
+      "slots": [],
+      "tagname": "paper-grid"
+    }
+  ]
+}
