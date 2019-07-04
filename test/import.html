@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
-            <script src="node_modules/@webcomponents/webcomponentsjs/webcomponents-bundle.js"></script>
         <title>HTML Modules Demo</title>
         <script type="module">
-           import myElem from "./test.html"
+            import { MyDiv } from "./test.html";
+            window.customElements.define("my-html5-element", HTML5Element);
         </script>
     </head>
     <body>
