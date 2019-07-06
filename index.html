@@ -8,59 +8,50 @@
 
 	<meta name="description" content="overview &amp; stats" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-<!-- content   -->
-<link rel="import" href="/components/indexContent/indexContent.html">
+	<!-- content   -->
+	<!-- <link rel="import" href="/components/indexContent/indexContent.html"> -->
 
 	<!-- make html components @new4761 edit -->
-	<link rel="import" href="/components/navbar.html">
-	<link rel="import" href="/components/sidebar.html">
-	<link rel="import" href="/components/footer.html">
-	<link rel="import" href="/components/structure/head.html">
-	<link rel="import" href="/components/structure/bacsicScript.html">
-<script type="module">
-import * as doc from "./myimport.html"
-</script>
+	<script src="/node_modules/@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js"></script>
+	<script src="/node_modules/@webcomponents/webcomponentsjs/webcomponents-bundle.js"></script>
+
+
+	<script type="module" src="./components/structure/basicscript.js"></script>
+	<script type="module" src="./components/structure/head.js"></script>
+	<script type="module" src="./components/footer.js"></script>
+	<script type="module" src="./components/sidebar.js"></script>
+	<script type="module" src="./components/navbar.js"></script>
+	<script type="module" src="./components/indexContent/indexContent.js"></script>
 	
 
-
-
+	<!-- <link rel="import" href="/components/navbar.html">
+	<link rel="import" href="/components/footer.html">
+	<link rel="import" href="/components/structure/head.html">
+	<link rel="import" href="/components/structure/bacsicScript.html"> -->
+	<head-element></head-element>
 </head>
-<head-element></head-element>
+
 
 <body class="no-skin" style="font-family: 'Mitr', sans-serif !important;">
-		<div id="navbar" class="navbar navbar-default    navbar-collapse       h-navbar ace-save-state">
-		<!-- forom navbar.html -->
-		<navbar-element></navbar-element>
-	</div>
+
+	<!-- forom navbar.html -->
+	<navbar-element></navbar-element>
+
 	<div class="main-container ace-save-state" id="main-container">
 		<script type="text/javascript">
 			try { ace.settings.loadState('main-container') } catch (e) { }
 		</script>
-	<div id="sidebar" class="sidebar      h-sidebar                navbar-collapse collapse          ace-save-state">
-			<script type="text/javascript">
-				try{ace.settings.loadState('sidebar')}catch(e){}
-			</script>
-
-			<!-- forom sidebar.html -->
-			<sidebar-item-element></sidebar-item-element>
-
-		</div>
-
-		<div class="main-content">
+		<!-- forom sidebar.html -->
+		<slidebar-element></slidebar-element>
 
 
-			<div class="main-content-inner">
 
-				<!-- from indexContent.html-->
-				<indexContent-element></indexContent-element>
-			</div>
+		<!-- from indexContent.html-->
+	<index-element></index-element>
 
 
-			<!-- from footer.html-->
-			<footer-element></footer-element>
-
-		</div><!-- /.main-content -->
-
+		<!-- from footer.html-->
+		<footer-element></footer-element>
 
 
 		<a href="#" id="btn-scroll-up" class="btn-scroll-up btn btn-sm btn-inverse">
@@ -68,7 +59,6 @@ import * as doc from "./myimport.html"
 		</a>
 	</div><!-- /.main-container -->
 
-	<basic-scripts-element></basic-scripts-element>
 </body>
-
+<basic-scripts-element></basic-scripts-element>
 </html>

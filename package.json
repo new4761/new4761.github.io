@@ -1,0 +1,31 @@
+{
+  "name": "public",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/new4761/flip_class_tem..git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/new4761/flip_class_tem./issues"
+  },
+  "homepage": "https://github.com/new4761/flip_class_tem.#readme",
+  "dependencies": {
+    "@webcomponents/webcomponentsjs": "^2.2.10",
+    "lit-element": "^2.2.0"
+  },
+  "devDependencies": {
+    "polyserve": "^0.27.15",
+    "webpack": "^4.35.2",
+    "webpack-cli": "^3.3.5"
+  }
+}

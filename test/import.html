@@ -1,13 +1,12 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-    <head>
-        <title>HTML Modules Demo</title>
-        <script type="module">
-            import { MyDiv } from "./test.html";
-            window.customElements.define("my-html5-element", HTML5Element);
-        </script>
-    </head>
-    <body>
-        <my-html5-element></my-html5-element>
-    </body>
+  <head>
+    <script src="../node_modules/@webcomponents/webcomponentsjs/webcomponents-bundle.js"></script>
+    <title>LitElement Example</title>
+  </head>
+
+  <body>
+    <simple-greeting></simple-greeting>
+  </body>
+
 </html>

@@ -1,4 +1,4 @@
-jjQuery(function($) {
+jQuery(function($) {
 	var $sidebar = $('.sidebar').eq(0);
 	if( !$sidebar.hasClass('h-sidebar') ) return;
    
@@ -28,7 +28,7 @@ jjQuery(function($) {
 		   if (scroll > 17) scroll = 17;
    
    
-		   if (scroll > 16) {			
+		   if (scroll > 16) {
 			   if(!done) {
 				   $sidebar.addClass('lower-highlight');
 				   done = true;

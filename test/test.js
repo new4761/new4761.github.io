@@ -1,20 +1,18 @@
+import { LitElement, html } from 'lit-element';
 
-
-
-html`
-<template name="test" >
-  <h1>This won't display!</h1>
-  <script>alert("this won't alert!");</script>
-</template>`
-
-
-let tmpl = document.querySelector('template');
-class MyElement extends HTMLElement {
-constructor() {
-    super(); // always call super() first in the constructor.
-    let shadowRoot = this.attachShadow({mode: 'open'});
-    shadowRoot.appendChild(tmpl.content.cloneNode(true));
+class SimpleGreeting extends LitElement {
+  static get properties() {
+    return { name: { type: String } };
   }
 
+  constructor() {
+    super();
+    this.name = 'World';
+  }
+  
+  render() {
+    return html`<p>Hello, ${this.name}!</p>`;
+  }
 }
-customElements.define('my-element', MyElement);
+
+customElements.define('simple-greeting', SimpleGreeting);

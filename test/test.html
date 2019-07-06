@@ -1,38 +1,24 @@
-<template id="html5ElementTemplate">
+<template>
     <style>
-        .outerDiv {
-            border:0.1em solid blue;
-            display:inline-block;
-            padding: 0.4em;
-        }
-        .devText {
-            font-weight: bold;
-            font-size: 1.4em;
-            text-align: center;
-            margin-top: 0.3em;
-        }
-        .mainImage {
-            height:254px;
-        }
+      :host { display: block }
     </style>
-    <div class="outerDiv">
-        <img class="mainImage" src="https://www.w3.org/html/logo/downloads/HTML5_Logo_512.png" />
-        <div class="devText">HTML Modules Are Great!</div>
-    </div>
+    Customized <slot></slot>
   </template>
+  
   <script type="module">
-    let moduleDocument = import.meta.document;
-    class HTML5Element extends HTMLElement {
-        constructor() {
-            super();
-            console.log("HTML5Element constructor");
-            let shadowRoot = this.attachShadow({ mode: "closed" });
-            let template = moduleDocument.getElementById("html5ElementTemplate");
-            shadowRoot.appendChild(document.importNode(template.content, true));
-        }
-        connectedCallback() {
-            console.log("HTML5Element connectedCallback");
-        }
+  class MyDiv extends HTMLElement {
+    constructor() {
+      super();
+      console.log('constructed');
     }
-    export { HTML5Element };
+    connectedCallback() {
+      if (this.shadowRoot)
+        return;
+      let root = this.attachShadow({mode: 'open'});
+      let tmpl = moduleHTML.querySelector('template');
+      root.appendChild(document.importNode(tmpl.content, true));
+      console.log('connected');
+    }
+  }
+  window.customElements.define('my-div', MyDiv);
   </script>
