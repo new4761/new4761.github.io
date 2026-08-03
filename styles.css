@@ -1,0 +1,215 @@
+:root {
+  color-scheme: light dark;
+  --surface-page: #f7f6f3;
+  --surface-panel: #fffefa;
+  --surface-muted: #eeece7;
+  --text-primary: #24211e;
+  --text-secondary: #67615a;
+  --border-default: #d9d5ce;
+  --accent-primary: #b4232c;
+  --accent-hover: #8f1821;
+  --accent-soft: #f6e5e6;
+  --text-on-accent: #fffefa;
+  --status-success: #246b48;
+  --shadow-panel: 0 18px 48px rgb(79 67 53 / 10%), 0 2px 8px rgb(79 67 53 / 6%);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --content-width: 1120px;
+  --radius-control: 8px;
+  --radius-panel: 16px;
+  --focus-ring: 0 0 0 3px var(--accent-soft), 0 0 0 5px var(--accent-primary);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-page: #171614;
+    --surface-panel: #23211e;
+    --surface-muted: #2d2a26;
+    --text-primary: #f5f1e9;
+    --text-secondary: #bdb5aa;
+    --border-default: #454039;
+    --accent-primary: #eb6d74;
+    --accent-hover: #f2777e;
+    --accent-soft: #442529;
+    --text-on-accent: #171614;
+    --status-success: #6fc49a;
+    --shadow-panel: 0 18px 48px rgb(0 0 0 / 24%), 0 2px 8px rgb(0 0 0 / 18%);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.site-header,
+main,
+footer {
+  width: min(calc(100% - 32px), var(--content-width));
+  margin-inline: auto;
+}
+
+.site-header {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-default);
+}
+
+.brand,
+.nav-link,
+.back-link,
+.text-link {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.brand {
+  letter-spacing: -0.03em;
+}
+
+.nav-link,
+.back-link,
+.text-link {
+  padding: var(--space-2);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+}
+
+.nav-link:hover,
+.back-link:hover,
+.text-link:hover {
+  color: var(--accent-primary);
+}
+
+.eyebrow {
+  margin: 0 0 var(--space-5);
+  color: var(--accent-primary);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  margin-top: 0;
+}
+
+h1 {
+  max-width: 720px;
+  margin-bottom: var(--space-6);
+  font-size: clamp(2.5rem, 8vw, 5rem);
+  line-height: 0.95;
+  letter-spacing: -0.055em;
+}
+
+h2 {
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.lead {
+  max-width: 52ch;
+  margin-bottom: var(--space-6);
+  color: var(--text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.55;
+}
+
+.ticket-motif,
+.number-output {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow:
+    var(--shadow-panel),
+    inset 0 1px 0 rgb(255 255 255 / 35%);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+
+.ticket-motif span,
+.number-output span {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  border-right: 1px dashed var(--border-default);
+  aspect-ratio: 0.72;
+}
+
+.ticket-motif span:last-child,
+.number-output span:last-child {
+  border-right: 0;
+}
+
+.section-heading p,
+.panel-heading p {
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+footer {
+  padding-block: var(--space-8);
+  border-top: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+footer p {
+  margin-bottom: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

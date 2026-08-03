@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Generate a six-digit Thai lottery number from historical first-prize digit patterns."
+    />
+    <meta
+      name="theme-color"
+      content="#f7f6f3"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#171614"
+      media="(prefers-color-scheme: dark)"
+    />
+    <link rel="canonical" href="https://new4761.github.io/tools/lottery/" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23b4232c'/%3E%3Cpath d='M20 16h17a14 14 0 0 1 0 28H29v8h-9V16zm9 9v10h8a5 5 0 0 0 0-10h-8z' fill='%23fffefa'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/tool.css" />
+    <title>Thai Lottery Number | Pocket Tools</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="Pocket Tools home">Pocket Tools</a>
+      <nav aria-label="Primary navigation">
+        <a class="nav-link" href="/">All tools</a>
+      </nav>
+    </header>
+
+    <main class="tool-page">
+      <a class="back-link" href="/"
+        ><span aria-hidden="true">←</span> Back to tools</a
+      >
+      <section class="tool-intro" aria-labelledby="tool-title">
+        <p class="eyebrow">Tool 01</p>
+        <h1 id="tool-title">Thai lottery<br />number generator</h1>
+        <p class="lead">
+          Create a six-digit number from the position-by-position patterns in
+          historical first-prize results.
+        </p>
+      </section>
+
+      <section class="generator-panel" aria-labelledby="generator-title">
+        <div class="panel-heading">
+          <h2 id="generator-title">Your number</h2>
+          <p>
+            Weighted by each digit position across historical first-prize draws.
+          </p>
+          <p class="model-status" data-model-status>
+            Loading historical results…
+          </p>
+        </div>
+
+        <div
+          class="number-output"
+          data-number-output
+          role="status"
+          aria-live="polite"
+          aria-label="No number generated yet"
+        >
+          <span aria-hidden="true">–</span><span aria-hidden="true">–</span
+          ><span aria-hidden="true">–</span><span aria-hidden="true">–</span
+          ><span aria-hidden="true">–</span><span aria-hidden="true">–</span>
+        </div>
+
+        <div class="button-row">
+          <button
+            class="button button-primary"
+            type="button"
+            data-generate
+            disabled
+          >
+            Generate number
+          </button>
+          <button
+            class="button button-secondary"
+            type="button"
+            data-copy
+            disabled
+          >
+            Copy number
+          </button>
+        </div>
+        <p class="action-status" data-action-status aria-live="polite">
+          Ready when you are.
+        </p>
+      </section>
+
+      <aside class="privacy-note" aria-label="How this tool works">
+        <strong>Private and local.</strong>
+        <span>
+          This tool reads public results from
+          <a href="https://github.com/new4761/Thai_lottery_analysis"
+            >Thai_lottery_analysis</a
+          >. Nothing is uploaded or saved. Historical patterns do not predict
+          future draws.
+        </span>
+      </aside>
+    </main>
+
+    <footer>
+      <p>No tracking. No data leaves your browser.</p>
+    </footer>
+    <script type="module" src="/app.mjs?v=2"></script>
+  </body>
+</html>
