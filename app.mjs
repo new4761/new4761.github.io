@@ -2,7 +2,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
-} from "/lottery.mjs?v=3";
+} from "/lottery.mjs?v=5";
 
 const MODEL_URL =
   "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv";
@@ -21,6 +21,8 @@ const newsToggleLabel =
   newsToggle && "checked" in newsToggle ? newsToggle : null;
 const newsPanel = document.querySelector("[data-news-panel]");
 const newsPicksContainer = document.querySelector("[data-news-picks]");
+const pickCountSelect = document.querySelector("[data-pick-count]");
+const pickList = document.querySelector("[data-pick-list]");
 
 let historicModel = null;
 let activeModel = null;
@@ -166,10 +168,52 @@ function showNumber(number) {
   status.textContent = "New number generated.";
 }
 
-generateButton.addEventListener("click", () => {
-  if (activeModel !== null) {
-    showNumber(generateModelLotteryNumber(activeModel));
+function pickCount() {
+  if (!pickCountSelect) {
+    return 1;
   }
+  const value = Number.parseInt(pickCountSelect.value, 10);
+  return Number.isFinite(value) && value >= 1 ? value : 1;
+}
+
+function renderPickList(picks) {
+  if (!pickList) {
+    return;
+  }
+  pickList.replaceChildren();
+  if (picks.length === 0) {
+    pickList.hidden = true;
+    return;
+  }
+  pickList.hidden = false;
+  const fragment = document.createDocumentFragment();
+  picks.forEach((pick) => {
+    const li = document.createElement("li");
+    li.className = "pick-list-item";
+    li.textContent = pick;
+    fragment.appendChild(li);
+  });
+  pickList.appendChild(fragment);
+}
+
+generateButton.addEventListener("click", () => {
+  if (activeModel === null) {
+    return;
+  }
+  const count = pickCount();
+  if (count === 1) {
+    const single = generateModelLotteryNumber(activeModel);
+    showNumber(single);
+    renderPickList([]);
+    return;
+  }
+  const picks = [];
+  for (let i = 0; i < count; i += 1) {
+    picks.push(generateModelLotteryNumber(activeModel));
+  }
+  showNumber(picks[0]);
+  renderPickList(picks);
+  status.textContent = `${count} numbers generated.`;
 });
 
 if (newsToggleLabel) {
@@ -179,11 +223,24 @@ if (newsToggleLabel) {
 }
 
 copyButton.addEventListener("click", async () => {
-  const number = output.dataset.value;
+  const primary = output.dataset.value;
+  if (!primary) {
+    return;
+  }
+  const picks = [];
+  if (pickList && !pickList.hidden) {
+    pickList.querySelectorAll(".pick-list-item").forEach((li) => {
+      picks.push(li.textContent.trim());
+    });
+  }
+  const text = picks.length > 0 ? [primary, ...picks].join("\n") : primary;
 
   try {
-    await navigator.clipboard.writeText(number);
-    status.textContent = "Number copied.";
+    await navigator.clipboard.writeText(text);
+    status.textContent =
+      picks.length > 0
+        ? `${picks.length + 1} numbers copied.`
+        : "Number copied.";
   } catch {
     status.textContent =
       "Copy unavailable. Select the number and copy it manually.";

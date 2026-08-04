@@ -280,3 +280,70 @@
   font-weight: 500;
   color: var(--text-secondary);
 }
+
+.pick-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.pick-count-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pick-count-select {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pick-count-select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pick-list {
+  margin: 0 0 var(--space-6);
+  padding: var(--space-4);
+  list-style: none;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+  counter-reset: pick;
+}
+
+.pick-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-panel);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 1.125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  counter-increment: pick;
+}
+
+.pick-list-item::before {
+  content: counter(pick) ".";
+  margin-right: var(--space-2);
+  color: var(--text-secondary);
+  font-weight: 400;
+  font-size: 0.75rem;
+}

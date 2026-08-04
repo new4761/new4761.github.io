@@ -78,6 +78,18 @@
           ><span aria-hidden="true">–</span><span aria-hidden="true">–</span>
         </div>
 
+        <div class="pick-controls">
+          <label class="pick-count-label" for="pick-count-input">Picks per generate</label>
+          <select id="pick-count-input" class="pick-count-select" data-pick-count>
+            <option value="1">1</option>
+            <option value="3">3</option>
+            <option value="5" selected>5</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+
+        <ol class="pick-list" data-pick-list hidden aria-live="polite" aria-label="Generated picks"></ol>
+
         <div class="button-row">
           <button
             class="button button-primary"
@@ -146,6 +158,6 @@
     <footer>
       <p>No tracking. No data leaves your browser.</p>
     </footer>
-    <script type="module" src="/app.mjs?v=4"></script>
+    <script type="module" src="/app.mjs?v=5"></script>
   </body>
 </html>
