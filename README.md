@@ -38,6 +38,21 @@ suffix positions with news from The Thaiger.
   `sources`. The scraper also exports `scrapeFromHtml(html)` for
   fixture-based testing.
 
+> **Why Thaiger-only for now?** GLO's official
+> [stat-previous](https://www.glo.or.th/mission/awarding/stat-previous) and
+> [orderby-time](https://www.glo.or.th/mission/awarding/orderby-time) pages
+> are Nuxt SPAs that load numbers via XHR after page-load — static fetch
+> (the only approach without a no-deps headless browser) cannot see them.
+> The CKAN `package_show` listing at
+> `https://gdcatalog.glo.or.th/api/3/action/package_show?id=dataset_c4-9_01`
+> returns 9 resources that all point back to those SPA pages, plus PDF
+> file-downloads at `api.glo.or.th/utility/file/download/<uuid>` that
+> would require a PDF text-extraction dependency this site refuses to
+> introduce. Thaiger republishes the same GLO numbers minutes after each
+> official draw, so media-source signal currently dominates. Adding GLO
+> cleanly would require either Playwright in the scrape-news Action or a
+> pure-JS PDF parser; deferred until a dedicated backend is built.
+
 ## Workflows
 
 - **`.github/workflows/scrape-news.yml`** — Refreshes `news.json` on the
