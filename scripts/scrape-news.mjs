@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const THAIGER_URL = "https://thethaiger.com/thai-lottery/";
 const NEWS_FILE = process.argv[2] ?? "news.json";
+const INPUT_FILE = process.argv[3] ?? null;
 const MAX_DRAWS = 5;
 
 const MONTHS = {
@@ -10,13 +11,14 @@ const MONTHS = {
   Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11,
 };
 
-async function fetchHtml(url) {
+export async function fetchHtml(url) {
   const res = await fetch(url, {
     redirect: "follow",
     headers: {
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "en-GB,en;q=0.9",
-      "User-Agent": "Pocket-Tools/1.0 (+https://new4761.github.io/)",
+      "User-Agent":
+        "Mozilla/5.0 (compatible; Pocket-Tools/1.0; +https://new4761.github.io/)",
     },
   });
   if (!res.ok) {
@@ -25,7 +27,7 @@ async function fetchHtml(url) {
   return res.text();
 }
 
-function stripHtml(html) {
+export function stripHtml(html) {
   return html
     .replace(/<script[\s\S]*?<\/script>/g, "")
     .replace(/<style[\s\S]*?<\/style>/g, "")
@@ -39,10 +41,16 @@ function stripHtml(html) {
     .replace(/\s+/g, " ");
 }
 
-function extractDraws(text) {
+export function extractDraws(text) {
+  // The Thaiger page mixes the top featured-draw block (which embeds prize
+  // amounts like "฿6,000,000 per winner" between fields) with the bottom
+  // archive list (which doesn't). Allowing any chars (bounded, non-greedy)
+  // in the inter-field gaps handles both shapes. Duplicate draw dates are
+  // discarded, keeping the homepage headline (freshest draw) first.
   const pattern =
-    /Government [Ll]ottery [Rr]esults[^()\d]{0,80}(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{4})[\s\S]{0,3000}?1st prize\s*\D{0,5}(\d{6})\D{0,80}?first 3 digits\s*\D{0,5}(\d{3})\s+(\d{3})\D{0,80}?last 3 digits\s*\D{0,5}(\d{3})\s+(\d{3})\D{0,80}?last 2 digits\s*\D{0,5}(\d{2})/g;
+    /Government [Ll]ottery [Rr]esults[^()\d]{0,80}(\d{1,2})\s+(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{4})[\s\S]{0,3000}?1st prize\s*\D{0,5}(\d{6})[\s\S]{0,400}?first 3 digits\s*\D{0,5}(\d{3})\s+(\d{3})[\s\S]{0,400}?last 3 digits\s*\D{0,5}(\d{3})\s+(\d{3})[\s\S]{0,400}?last 2 digits\s*\D{0,5}(\d{2})/g;
 
+  const seen = new Set();
   const results = [];
   let match;
   while ((match = pattern.exec(text)) !== null) {
@@ -52,6 +60,10 @@ function extractDraws(text) {
       continue;
     }
     const date = formatIsoDate(Number(yearStr), month, Number(dayStr));
+    if (seen.has(date)) {
+      continue;
+    }
+    seen.add(date);
     results.push({
       date,
       firstPrize,
@@ -123,6 +135,32 @@ function buildSuggestions(draws) {
   return result;
 }
 
+/**
+ * Build a complete news.json-shaped object from raw Thaiger HTML.
+ * Exported so tests can run against a saved fixture without network.
+ */
+export function scrapeFromHtml(html, { fetchedAt = new Date().toISOString() } = {}) {
+  const text = stripHtml(html);
+  const draws = extractDraws(text);
+  const news = {
+    fetchedAt,
+    sources: [],
+    suggestedNumbers: [],
+    freshness: { hoursSinceLastDraw: null },
+  };
+  if (draws.length > 0) {
+    news.sources.push({
+      id: "thaiger",
+      url: THAIGER_URL,
+      drawCount: draws.length,
+      latestDrawDate: draws[0].date,
+    });
+    news.suggestedNumbers = buildSuggestions(draws);
+    news.freshness.hoursSinceLastDraw = hoursSince(draws[0].date);
+  }
+  return news;
+}
+
 async function main() {
   const news = {
     fetchedAt: new Date().toISOString(),
@@ -132,20 +170,18 @@ async function main() {
   };
 
   try {
-    const html = await fetchHtml(THAIGER_URL);
-    const text = stripHtml(html);
-    const draws = extractDraws(text);
-    if (draws.length === 0) {
-      console.warn("No draws parsed from Thaiger homepage");
+    let html;
+    if (INPUT_FILE) {
+      html = readFileSync(INPUT_FILE, "utf8");
     } else {
-      news.sources.push({
-        id: "thaiger",
-        url: THAIGER_URL,
-        drawCount: draws.length,
-        latestDrawDate: draws[0].date,
-      });
-      news.suggestedNumbers = buildSuggestions(draws);
-      news.freshness.hoursSinceLastDraw = hoursSince(draws[0].date);
+      html = await fetchHtml(THAIGER_URL);
+    }
+    const scraped = scrapeFromHtml(html, { fetchedAt: news.fetchedAt });
+    news.sources = scraped.sources;
+    news.suggestedNumbers = scraped.suggestedNumbers;
+    news.freshness = scraped.freshness;
+    if (news.suggestedNumbers.length === 0) {
+      console.warn("No draws parsed from Thaiger homepage");
     }
   } catch (err) {
     console.error("Thaiger fetch failed:", err.message);
