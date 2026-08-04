@@ -29,3 +29,14 @@ jobs:
           git add news.json
           git commit -m "🤖 Refresh lottery news.json"
           git push
+      - name: Watchdog — fail run if scraper produced zero suggestions
+        # Catches silent scraper failure (WAF, layout change, 5xx) that would otherwise commit an empty news.json and keep the run green.
+        if: always()
+        run: |
+          set -e
+          COUNT=$(node -e "const n=require('./news.json');console.log(Array.isArray(n.suggestedNumbers)?n.suggestedNumbers.length:0)")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::Scraper produced 0 suggestions — news.json contains no suggestedNumbers. The Thaiger homepage layout may have changed or the request was blocked. Site will fall back to pure-history mode until this is fixed."
+            exit 1
+          fi
+          echo "Watchdog OK: $COUNT suggestions in news.json"
