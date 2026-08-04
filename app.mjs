@@ -19,6 +19,8 @@ const newsStatus = document.querySelector("[data-news-status]");
 const newsToggle = document.querySelector("[data-news-toggle]");
 const newsToggleLabel =
   newsToggle && "checked" in newsToggle ? newsToggle : null;
+const newsPanel = document.querySelector("[data-news-panel]");
+const newsPicksContainer = document.querySelector("[data-news-picks]");
 
 let historicModel = null;
 let activeModel = null;
@@ -71,6 +73,54 @@ function renderModelStatus() {
   )}–${formatDate(historicModel.endDate)}.`;
 }
 
+function renderNewsPanel() {
+  if (!newsPanel || !newsPicksContainer) {
+    return;
+  }
+  const hasValidNews =
+    news && Array.isArray(news.suggestedNumbers) && news.suggestedNumbers.length > 0;
+  if (!hasValidNews) {
+    newsPanel.hidden = true;
+    newsPicksContainer.replaceChildren();
+    return;
+  }
+  newsPanel.hidden = false;
+  const byDate = new Map();
+  for (const suggestion of news.suggestedNumbers) {
+    const key = suggestion.drawDate ?? "unknown";
+    if (!byDate.has(key)) {
+      byDate.set(key, []);
+    }
+    byDate.get(key).push(suggestion);
+  }
+  const sortedDates = [...byDate.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  const fragment = document.createDocumentFragment();
+  for (const date of sortedDates) {
+    const suggestions = byDate.get(date);
+    const row = document.createElement("div");
+    row.className = "news-pick-row";
+    const heading = document.createElement("p");
+    heading.className = "news-pick-date";
+    heading.textContent = date === "unknown" ? "Unattributed picks" : `Draw ${formatDate(date)}`;
+    row.appendChild(heading);
+    const chips = document.createElement("div");
+    chips.className = "news-pick-chips";
+    for (const suggestion of suggestions) {
+      const chip = document.createElement("span");
+      chip.className = `news-pick-chip news-pick-chip--${suggestion.source ?? "unknown"}`;
+      chip.textContent = suggestion.digits.join("");
+      const weight = document.createElement("span");
+      weight.className = "news-pick-weight";
+      weight.textContent = suggestion.weight.toFixed(2);
+      chip.appendChild(weight);
+      chips.appendChild(chip);
+    }
+    row.appendChild(chips);
+    fragment.appendChild(row);
+  }
+  newsPicksContainer.replaceChildren(fragment);
+}
+
 function renderNewsStatus() {
   if (!newsToggleLabel) {
     return;
@@ -98,6 +148,7 @@ function rebuildActiveModel() {
   const enabled = newsToggleLabel ? newsToggleLabel.checked : true;
   activeModel = applyNewsBias(historicModel, news, { enabled });
   renderNewsStatus();
+  renderNewsPanel();
 }
 
 function showNumber(number) {

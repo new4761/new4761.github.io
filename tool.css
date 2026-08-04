@@ -220,3 +220,63 @@
 .news-note strong {
   color: var(--text-primary);
 }
+
+.news-transparency {
+  margin-top: var(--space-4);
+}
+
+.news-transparency summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.news-transparency-body {
+  margin-top: var(--space-3);
+  display: grid;
+  gap: var(--space-4);
+}
+
+.news-pick-row {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.news-pick-date {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.news-pick-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.news-pick-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-default);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.news-pick-chip--thaiger-1st-prize {
+  border-color: var(--accent-primary);
+}
+
+.news-pick-weight {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}

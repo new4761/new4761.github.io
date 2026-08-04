@@ -113,6 +113,11 @@
           <p class="news-status" data-news-status aria-live="polite">
             Loading news data…
           </p>
+
+          <details class="news-transparency" data-news-panel hidden>
+            <summary>Show the picks factored into this regen</summary>
+            <div class="news-transparency-body" data-news-picks></div>
+          </details>
         </div>
       </section>
 
@@ -141,6 +146,6 @@
     <footer>
       <p>No tracking. No data leaves your browser.</p>
     </footer>
-    <script type="module" src="/app.mjs?v=3"></script>
+    <script type="module" src="/app.mjs?v=4"></script>
   </body>
 </html>
