@@ -212,3 +212,78 @@ test("applyNewsBias with 6-digit suggestion biases every position, capped at 15%
   assert.equal(biased.positions[0][0], 100);
   assert.equal(biased.positions[5][0], 100);
 });
+
+test("applyNewsBias with overlapping suggestions on the same suffix digit caps aggregate at 15%", () => {
+  // Two length-3 suggestions [1,0,0] and [1,2,3] both target position 3 digit 1
+  // (200 added to that single position-digit pair). Other positions get bias
+  // on different digits, so each position's biasAdded = 200 too, but spread
+  // thin. Original: 100 per digit per position, cap = 15% × 1000 = 150.
+  // Expected: each bias over 150 is scaled to exactly 150, so every biased
+  // position's biased digit ends up at 250 (100 original + 150 capped bias).
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-04T10:00:00Z",
+    sources: [{ id: "test" }],
+    suggestedNumbers: [
+      { digits: [1, 0, 0], weight: 100, source: "test" },
+      { digits: [1, 2, 3], weight: 100, source: "test" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news);
+
+  // Then
+  // Position 3: digit 1 got 200 added (overlap), capped to 150.
+  assert.equal(biased.positions[3][1], 250, "position 3 digit 1 cap-scaled to original + 150");
+  assert.equal(biased.positions[3][0], 100, "position 3 digit 0 untouched");
+  assert.equal(biased.positions[3][2], 100, "position 3 digit 2 untouched");
+  // Position 4: digits 0 and 2 each got 100 added — biasAdded = 200 > cap 150.
+  // Scale 0.75: digit 0 = 100 + 100*0.75 = 175; digit 2 = 175.
+  assert.equal(biased.positions[4][0], 175);
+  assert.equal(biased.positions[4][2], 175);
+  assert.equal(biased.positions[4][1], 100);
+  // Position 5: digits 0 and 3 each got 100 added — same shape as position 4.
+  assert.equal(biased.positions[5][0], 175);
+  assert.equal(biased.positions[5][3], 175);
+  // maxApplied reported at the full 15% (each position hit the cap).
+  assert.equal(biased.newsInfluence.applied, 0.15);
+  assert.equal(biased.newsInfluence.capped, true);
+});
+
+test("applyNewsBias aggregate bias never exceeds 15% within float tolerance under 100-suggestion stress", () => {
+  // 100 suggestions all [1,0,0] weight 10 → position 3 digit 1 gets 1000 added.
+  // Original total per position = 1000 (100 × 10 digits). cap = 150.
+  // Capped scale 0.15 → biased[3][1] = 100 + 1000*0.15 = 250.
+  // Position 3 total weight = 1000 + 150 = 1150.
+  //
+  // This is the adversarial-shape argument: even when many suggestions pile
+  // onto the same position-digit pair, the proportion of news-weighted
+  // probability never exceeds 15% / (100% + 15%) ≈ 15% of the position.
+  const model = uniformModel();
+  const suggestions = [];
+  for (let i = 0; i < 100; i += 1) {
+    suggestions.push({ digits: [1, 0, 0], weight: 10, source: "stress" });
+  }
+  const news = {
+    fetchedAt: "2026-08-04T10:00:00Z",
+    sources: [{ id: "stress" }],
+    suggestedNumbers: suggestions,
+  };
+
+  // When
+  const biased = applyNewsBias(model, news);
+
+  // Then
+  assert.ok(
+    Math.abs(biased.positions[3][1] - 250) < 1e-9,
+    `position 3 digit 1 should be 250 (capped to +150). Got ${biased.positions[3][1]}`,
+  );
+  const positionTotal = biased.positions[3].reduce((sum, n) => sum + n, 0);
+  assert.ok(
+    Math.abs(positionTotal - 1150) < 1e-9,
+    `position 3 total weight = 1150 (1000 original + 150 capped bias). Got ${positionTotal}`,
+  );
+  assert.equal(biased.newsInfluence.applied, 0.15);
+  assert.equal(biased.newsInfluence.capped, true);
+});
