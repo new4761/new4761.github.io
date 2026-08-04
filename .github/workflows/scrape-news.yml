@@ -1,9 +1,12 @@
 name: Refresh lottery news
 
+# GLO draws publish ~08:30 UTC (15:30 ICT) on the 1st/16th.
+# Crontab seeds news.json before the draw, then polls every 30 min
+# 08:00–12:00 UTC to catch fresh results within ~30 min of publish.
 on:
   schedule:
-    - cron: "0 5 1,16 * *"
-    - cron: "0 */2 1,16 * *"
+    - cron: "0 7 1,16 * *"
+    - cron: "0,30 8,9,10,11 1,16 * *"
   workflow_dispatch: {}
 
 permissions:
@@ -16,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
       - run: node scripts/scrape-news.mjs news.json
       - name: Commit if changed
         run: |
