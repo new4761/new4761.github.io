@@ -56,6 +56,14 @@
           <p class="model-status" data-model-status>
             Loading historical results…
           </p>
+          <p class="data-source">
+            Source: <a
+              data-data-source
+              href="https://github.com/new4761/Thai_lottery_analysis"
+              rel="noopener"
+              >new4761/Thai_lottery_analysis</a
+            > · monthly-updated CSV
+          </p>
         </div>
 
         <div
@@ -91,6 +99,21 @@
         <p class="action-status" data-action-status aria-live="polite">
           Ready when you are.
         </p>
+
+        <div class="news-toggle-group" role="group" aria-labelledby="news-toggle-title">
+          <label class="news-toggle" for="news-toggle-input">
+            <input
+              id="news-toggle-input"
+              type="checkbox"
+              data-news-toggle
+              checked
+            />
+            <span id="news-toggle-title">Use Thai lottery news from The Thaiger</span>
+          </label>
+          <p class="news-status" data-news-status aria-live="polite">
+            Loading news data…
+          </p>
+        </div>
       </section>
 
       <aside class="privacy-note" aria-label="How this tool works">
@@ -103,11 +126,21 @@
           future draws.
         </span>
       </aside>
+
+      <aside class="news-note" aria-label="How news influence works">
+        <strong>News influence up to 15% of weight on suffix positions.</strong>
+        <span>
+          When enabled, recent draw results published by The Thaiger nudge the
+          last three positions of the model. The historical model still dictates
+          at least 85% of every digit's weight. Disable the toggle for
+          pure-history mode.
+        </span>
+      </aside>
     </main>
 
     <footer>
       <p>No tracking. No data leaves your browser.</p>
     </footer>
-    <script type="module" src="/app.mjs?v=2"></script>
+    <script type="module" src="/app.mjs?v=3"></script>
   </body>
 </html>

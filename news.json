@@ -1,0 +1,326 @@
+{
+  "fetchedAt": "2026-08-04T06:50:37.823Z",
+  "sources": [
+    {
+      "id": "thaiger",
+      "url": "https://thethaiger.com/thai-lottery/",
+      "drawCount": 5,
+      "latestDrawDate": "2026-07-16"
+    }
+  ],
+  "suggestedNumbers": [
+    {
+      "digits": [
+        6,
+        3,
+        9,
+        2,
+        1,
+        4
+      ],
+      "weight": 1,
+      "source": "thaiger-1st-prize",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        6,
+        8,
+        3
+      ],
+      "weight": 0.5,
+      "source": "thaiger-first3",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        7,
+        0,
+        9
+      ],
+      "weight": 0.5,
+      "source": "thaiger-first3",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        7,
+        4,
+        6
+      ],
+      "weight": 0.5,
+      "source": "thaiger-last3",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        4,
+        2,
+        7
+      ],
+      "weight": 0.5,
+      "source": "thaiger-last3",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        7,
+        1
+      ],
+      "weight": 0.4,
+      "source": "thaiger-last2",
+      "drawDate": "2026-07-16"
+    },
+    {
+      "digits": [
+        7,
+        5,
+        1,
+        4,
+        9,
+        5
+      ],
+      "weight": 0.6666666666666666,
+      "source": "thaiger-1st-prize",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        0,
+        0,
+        1
+      ],
+      "weight": 0.3333333333333333,
+      "source": "thaiger-first3",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        9,
+        8,
+        0
+      ],
+      "weight": 0.3333333333333333,
+      "source": "thaiger-first3",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        3,
+        0,
+        4
+      ],
+      "weight": 0.3333333333333333,
+      "source": "thaiger-last3",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        5,
+        3,
+        1
+      ],
+      "weight": 0.3333333333333333,
+      "source": "thaiger-last3",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        6,
+        2
+      ],
+      "weight": 0.26666666666666666,
+      "source": "thaiger-last2",
+      "drawDate": "2026-07-01"
+    },
+    {
+      "digits": [
+        2,
+        8,
+        7,
+        1,
+        8,
+        4
+      ],
+      "weight": 0.5,
+      "source": "thaiger-1st-prize",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        7,
+        5,
+        8
+      ],
+      "weight": 0.25,
+      "source": "thaiger-first3",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        4,
+        3,
+        4
+      ],
+      "weight": 0.25,
+      "source": "thaiger-first3",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        0,
+        0,
+        7
+      ],
+      "weight": 0.25,
+      "source": "thaiger-last3",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        7,
+        2,
+        1
+      ],
+      "weight": 0.25,
+      "source": "thaiger-last3",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        4,
+        8
+      ],
+      "weight": 0.2,
+      "source": "thaiger-last2",
+      "drawDate": "2026-06-16"
+    },
+    {
+      "digits": [
+        1,
+        7,
+        3,
+        7,
+        7,
+        0
+      ],
+      "weight": 0.4,
+      "source": "thaiger-1st-prize",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        8,
+        4,
+        8
+      ],
+      "weight": 0.2,
+      "source": "thaiger-first3",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        4,
+        1,
+        5
+      ],
+      "weight": 0.2,
+      "source": "thaiger-first3",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        4,
+        1,
+        0
+      ],
+      "weight": 0.2,
+      "source": "thaiger-last3",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        9,
+        3,
+        8
+      ],
+      "weight": 0.2,
+      "source": "thaiger-last3",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        9,
+        5
+      ],
+      "weight": 0.16000000000000003,
+      "source": "thaiger-last2",
+      "drawDate": "2026-06-01"
+    },
+    {
+      "digits": [
+        1,
+        0,
+        7,
+        3,
+        8,
+        7
+      ],
+      "weight": 0.3333333333333333,
+      "source": "thaiger-1st-prize",
+      "drawDate": "2026-05-16"
+    },
+    {
+      "digits": [
+        2,
+        9,
+        8
+      ],
+      "weight": 0.16666666666666666,
+      "source": "thaiger-first3",
+      "drawDate": "2026-05-16"
+    },
+    {
+      "digits": [
+        0,
+        9,
+        1
+      ],
+      "weight": 0.16666666666666666,
+      "source": "thaiger-first3",
+      "drawDate": "2026-05-16"
+    },
+    {
+      "digits": [
+        6,
+        0,
+        2
+      ],
+      "weight": 0.16666666666666666,
+      "source": "thaiger-last3",
+      "drawDate": "2026-05-16"
+    },
+    {
+      "digits": [
+        7,
+        1,
+        6
+      ],
+      "weight": 0.16666666666666666,
+      "source": "thaiger-last3",
+      "drawDate": "2026-05-16"
+    },
+    {
+      "digits": [
+        0,
+        8
+      ],
+      "weight": 0.13333333333333333,
+      "source": "thaiger-last2",
+      "drawDate": "2026-05-16"
+    }
+  ],
+  "freshness": {
+    "hoursSinceLastDraw": 463
+  }
+}
