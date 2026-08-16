@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-08-16T07:34:36.008Z",
+  "fetchedAt": "2026-08-16T08:38:40.155Z",
   "sources": [
     {
       "id": "thaiger",
@@ -321,6 +321,6 @@
     }
   ],
   "freshness": {
-    "hoursSinceLastDraw": 368
+    "hoursSinceLastDraw": 369
   }
 }
