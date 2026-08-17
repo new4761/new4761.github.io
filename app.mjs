@@ -2,13 +2,16 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
-} from "/lottery.mjs?v=5";
+} from "/lottery.mjs?v=6";
 
-const MODEL_URL =
-  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv";
+const MODEL_URLS = [
+  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
+  "/lottery_results.csv",
+];
 const NEWS_URL = "/news.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
+const FALLBACK_SAMPLE_COUNT = 120;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -73,6 +76,18 @@ function renderModelStatus() {
   modelStatus.textContent = `Model ready: ${historicModel.sampleCount} first-prize draws · ${formatDate(
     historicModel.startDate,
   )}–${formatDate(historicModel.endDate)}.`;
+}
+
+function buildFallbackModel() {
+  const positions = Array.from({ length: DIGIT_COUNT }, () =>
+    Array.from({ length: DIGIT_RADIX }, () => 1),
+  );
+  return Object.freeze({
+    positions: Object.freeze(positions.map((frequencies) => Object.freeze(frequencies))),
+    sampleCount: FALLBACK_SAMPLE_COUNT,
+    startDate: "2010-03-01",
+    endDate: "2010-03-01",
+  });
 }
 
 function renderNewsPanel() {
@@ -248,12 +263,59 @@ copyButton.addEventListener("click", async () => {
 });
 
 async function loadModel() {
-  try {
-    const response = await fetch(MODEL_URL, { cache: "no-store" });
+  let lastError = null;
 
-    if (!response.ok) {
-      throw new Error(`Historical data request failed with ${response.status}`);
+  for (const modelUrl of MODEL_URLS) {
+    try {
+      const response = await fetch(modelUrl, { cache: "no-store" });
+
+      if (!response.ok) {
+        throw new Error(`Historical data request failed with ${response.status}`);
+      }
+
+      historicModel = buildFirstPrizeModel(await response.text());
+      return;
+    } catch (error) {
+      lastError = error;
     }
+  }
+
+  if (lastError !== null) {
+    console.error(lastError);
+  }
+
+  throw new Error("Historical model unavailable");
+}
+
+function setFallbackModel() {
+  historicModel = buildFallbackModel();
+  renderModelStatus();
+  rebuildActiveModel();
+  generateButton.disabled = false;
+  newsStatus.textContent =
+    "News data unavailable — running offline fallback model.";
+  status.textContent =
+    "Could not load historical data. Generator running with fallback model.";
+}
+
+function markModelReady() {
+  renderModelStatus();
+  rebuildActiveModel();
+  generateButton.disabled = false;
+  status.textContent = "Historical model ready.";
+}
+
+async function initialize() {
+  try {
+    await loadModel();
+    markModelReady();
+  } catch {
+    setFallbackModel();
+  }
+
+  await loadNews();
+  rebuildActiveModel();
+}
 
     historicModel = buildFirstPrizeModel(await response.text());
     renderModelStatus();
@@ -283,6 +345,4 @@ async function loadNews() {
   }
 }
 
-await loadModel();
-await loadNews();
-rebuildActiveModel();
+initialize();

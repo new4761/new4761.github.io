@@ -80,7 +80,7 @@ export function buildFirstPrizeModel(csvText) {
     ),
     sampleCount: dates.length,
     startDate: dates[0],
-    endDate: dates.at(-1),
+    endDate: dates[dates.length - 1],
   });
 }
 
