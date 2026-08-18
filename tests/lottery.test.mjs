@@ -289,6 +289,36 @@ test("applyNewsBias aggregate bias never exceeds 15% within float tolerance unde
   assert.equal(biased.newsInfluence.capped, true);
 });
 
+test("applyNewsBias uses max weight for duplicate suggestions from the same source", () => {
+  // Duplicate entries from one source for identical suggestion patterns should not
+  // be double counted; only the strongest suggestion is kept.
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-04T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      { digits: [1, 0, 0], weight: 100, source: "thaiger" },
+      { digits: [1, 0, 0], weight: 100, source: "thaiger" },
+      { digits: [1, 0, 0], weight: 20, source: "thaiger" },
+      { digits: [9, 9], weight: 8, source: "thaiger" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news);
+
+  // Then
+  // Only two unique suggestion keys are kept: 1,0,0 and 9,9.
+  assert.equal(biased.newsInfluence.suggestions, 2);
+  assert.equal(biased.newsInfluence.capped, false);
+  assert.equal(biased.newsInfluence.applied, 0.1);
+  // Position 3 adds +100 on digit 1 only (not +300), so total is 200.
+  assert.equal(biased.positions[3][1], 200);
+  // 9 appears in positions 4 and 5; not enough to cap.
+  assert.equal(biased.positions[4][9], 108);
+  assert.equal(biased.positions[5][9], 108);
+});
+
 test("filterRecentNewsSuggestions keeps suggestions inside freshness window", () => {
   // Given
   const news = {

@@ -2,6 +2,7 @@ const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
 export const DEFAULT_NEWS_STALE_DAYS = 30;
+const DEFAULT_NEWS_SOURCE_LABEL = "unknown";
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -208,6 +209,56 @@ function isValidSuggestion(suggestion) {
   );
 }
 
+function getNewsSourceId(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed.toLowerCase();
+    }
+  }
+
+  if (value !== null && typeof value === "object") {
+    if (typeof value.id === "string" && value.id.trim().length > 0) {
+      return value.id.trim().toLowerCase();
+    }
+    if (typeof value.name === "string" && value.name.trim().length > 0) {
+      return value.name.trim().toLowerCase();
+    }
+  }
+
+  return DEFAULT_NEWS_SOURCE_LABEL;
+}
+
+function aggregateNewsSuggestions(suggestions) {
+  const aggregated = new Map();
+  const sources = new Set();
+
+  for (const suggestion of suggestions) {
+    if (!isValidSuggestion(suggestion)) {
+      continue;
+    }
+    const source = suggestion.source;
+    const sourceId = getNewsSourceId(source);
+    const key = `${sourceId}:${suggestion.digits.join(".")}`;
+    sources.add(sourceId);
+
+    const existing = aggregated.get(key);
+    if (!existing || suggestion.weight > existing.weight) {
+      aggregated.set(key, {
+        source,
+        sourceId,
+        digits: suggestion.digits,
+        weight: suggestion.weight,
+      });
+    }
+  }
+
+  return {
+    suggestions: [...aggregated.values()],
+    sourceCount: sources.size,
+  };
+}
+
 function startingPositionForSuggestionLength(length, totalPositions) {
   if (length === 6) {
     return 0;
@@ -245,12 +296,14 @@ export function applyNewsBias(model, news, options = {}) {
   }
 
   const biased = model.positions.map((frequencies) => Array.from(frequencies));
+  const aggregate = aggregateNewsSuggestions(news.suggestedNumbers);
+  const sourceCount =
+    Array.isArray(news.sources) && news.sources.length > 0
+      ? news.sources.length
+      : aggregate.sourceCount;
   const totalPositions = biased.length;
 
-  for (const suggestion of news.suggestedNumbers) {
-    if (!isValidSuggestion(suggestion)) {
-      continue;
-    }
+  for (const suggestion of aggregate.suggestions) {
     const start = startingPositionForSuggestionLength(
       suggestion.digits.length,
       totalPositions,
@@ -308,11 +361,8 @@ export function applyNewsBias(model, news, options = {}) {
     newsInfluence: Object.freeze({
       applied: maxApplied,
       capped,
-      sources:
-        Array.isArray(news.sources) && news.sources.length > 0
-          ? news.sources.length
-          : 1,
-      suggestions: news.suggestedNumbers.length,
+      sources: sourceCount,
+      suggestions: aggregate.suggestions.length,
     }),
   });
 }
