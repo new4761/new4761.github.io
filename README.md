@@ -15,9 +15,10 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
 - **Historical model.** Fetches
   [`lottery_results.csv`](https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv)
   from [`new4761/Thai_lottery_analysis`](https://github.com/new4761/Thai_lottery_analysis),
-  a monthly-updated dataset of GLO first-prize draws. Each digit position
-  (0 = millions down to 5 = units) is sampled from its own historical
-  frequency distribution using the Web Crypto API.
+  a monthly-updated dataset of GLO first-prize draws. It uses each digit
+  position (0 = millions down to 5 = units) as a frequency model, with a
+  recency decay (half-life of 24 draws by default) so recent draws influence
+  generation more than older draws.
 - **News-aware regeneration.** When enabled, a `news.json` file biases
   the last three positions by up to **15% of the historical weight per
   position**. The historical model always supplies at least 85% of every
