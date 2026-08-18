@@ -15,6 +15,7 @@ const FALLBACK_SAMPLE_COUNT = 120;
 const MODEL_FETCH_TIMEOUT_MS = 6000;
 const NEWS_FETCH_TIMEOUT_MS = 6000;
 const NEWS_STALE_DAYS = 30;
+const NEWS_STALE_HOURS = NEWS_STALE_DAYS * 24;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -69,6 +70,24 @@ function filterRecentNews(rawNews) {
     rawNews.suggestedNumbers.length === 0
   ) {
     return rawNews;
+  }
+
+  const freshnessHours =
+    rawNews.freshness && Number.isFinite(rawNews.freshness.hoursSinceLastDraw)
+      ? Number(rawNews.freshness.hoursSinceLastDraw)
+      : null;
+  if (freshnessHours !== null && freshnessHours > NEWS_STALE_HOURS) {
+    return {
+      ...rawNews,
+      suggestedNumbers: [],
+      _staleFilter: {
+        applied: true,
+        removedCount: rawNews.suggestedNumbers.length,
+        staleDays: NEWS_STALE_DAYS,
+        latestDate: null,
+        reason: `freshness older than ${NEWS_STALE_DAYS} days`,
+      },
+    };
   }
 
   let latest = Number.NEGATIVE_INFINITY;
@@ -130,6 +149,15 @@ function describeNewsInfluence(influence) {
 
 function describeNewsState() {
   if (!news || !Array.isArray(news.suggestedNumbers) || news.suggestedNumbers.length === 0) {
+    const staleFilter = news && news._staleFilter;
+    if (staleFilter && staleFilter.applied && staleFilter.removedCount > 0) {
+      const reason = staleFilter.reason
+        ? ` (${staleFilter.reason})`
+        : "";
+      return `News data removed ${staleFilter.removedCount} stale suggestion${
+        staleFilter.removedCount === 1 ? "" : "s"
+      } — pure-history mode${reason}.`;
+    }
     return "News data unavailable — pure-history mode.";
   }
   const staleFilter = news._staleFilter;
