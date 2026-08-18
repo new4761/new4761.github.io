@@ -186,6 +186,7 @@ export function applyNewsBias(model, news, options = {}) {
     ? options.newsRecencyHalfLifeDays
     : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
   const nowMs = resolveNowMs(options.now);
+  const shouldApplyCap = newsHalfLifeDays > 0;
 
   if (!enabled || !isNewsletterValid(news)) {
     return Object.freeze({
@@ -251,6 +252,10 @@ export function applyNewsBias(model, news, options = {}) {
       0,
     ) - originalTotal;
     if (biasAdded <= 0) {
+      continue;
+    }
+    if (!shouldApplyCap) {
+      maxApplied = Math.max(maxApplied, biasAdded / originalTotal);
       continue;
     }
     const maxAllowed = cap * originalTotal;

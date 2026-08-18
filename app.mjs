@@ -2,7 +2,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
-} from "/lottery.mjs?v=7";
+} from "/lottery.mjs?v=9";
 
 const MODEL_URLS = [
   "/lottery_results.csv",
