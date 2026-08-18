@@ -1,0 +1,56 @@
+name: Sync lottery_results.csv
+
+on:
+  repository_dispatch:
+    types: [lottery-results-updated]
+  schedule:
+    # Check nightly; commit only when the source file hash changes.
+    - cron: "23 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Sync lottery results CSV by hash
+        id: sync
+        run: |
+          node scripts/sync-lottery-results.mjs
+          if [ ! -s lottery_results.csv ]; then
+            echo "::error::lottery_results.csv is missing or empty after sync."
+            exit 1
+          fi
+          if [ ! -s lottery_results.csv.sha ]; then
+            echo "::error::lottery_results.csv.sha is missing after sync."
+            exit 1
+          fi
+          if [ ! -s lottery_results.csv.meta.json ]; then
+            echo "::error::lottery_results.csv.meta.json is missing after sync."
+            exit 1
+          fi
+          if git diff --quiet -- lottery_results.csv lottery_results.csv.sha; then
+            echo "Sync status: unchanged"
+          else
+            echo "Sync status: updated"
+          fi
+
+      - name: Commit if changed
+        run: |
+          if git diff --quiet -- lottery_results.csv lottery_results.csv.sha; then
+            echo "No changes detected; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lottery_results.csv lottery_results.csv.sha lottery_results.csv.meta.json
+          git commit -m "🤖 Sync lottery_results.csv"
+          git push

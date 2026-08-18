@@ -1,6 +1,10 @@
 const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
+const DEFAULT_RECENCY_HALF_LIFE = 24;
+const DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS = 14;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const THAI_LOTTERY_DRAW_CYCLE_DAYS = 14;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -48,11 +52,16 @@ function sampleDigit(frequencies, randomSource) {
   throw new ModelDataError("Position frequencies do not contain a sample");
 }
 
-export function buildFirstPrizeModel(csvText) {
+export function buildFirstPrizeModel(
+  csvText,
+  { recencyHalfLife = DEFAULT_RECENCY_HALF_LIFE } = {},
+) {
+  const halfLife = Number.isFinite(recencyHalfLife) ? recencyHalfLife : DEFAULT_RECENCY_HALF_LIFE;
+  const useRecency = halfLife > 0;
   const positions = Array.from({ length: DIGIT_COUNT }, () =>
     Array(DIGIT_RADIX).fill(0),
   );
-  const dates = [];
+  const rows = [];
 
   for (const row of csvText.split(/\r?\n/).slice(1)) {
     const firstSeparator = row.indexOf(",");
@@ -64,23 +73,31 @@ export function buildFirstPrizeModel(csvText) {
       continue;
     }
 
-    dates.push(date);
-    Array.from(firstPrize, Number).forEach((digit, position) => {
-      positions[position][digit] += 1;
-    });
+    rows.push({ date, firstPrize: Array.from(firstPrize, Number) });
   }
 
-  if (dates.length === 0) {
+  if (rows.length === 0) {
     throw new ModelDataError("No valid first-prize rows were found");
+  }
+
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const age = rows.length - 1 - rowIndex;
+    const weight = useRecency ? Math.pow(0.5, age / halfLife) : 1;
+    const digits = rows[rowIndex].firstPrize;
+    digits.forEach((digit, position) => {
+      positions[position][digit] += weight;
+    });
   }
 
   return Object.freeze({
     positions: Object.freeze(
       positions.map((frequencies) => Object.freeze(frequencies)),
     ),
-    sampleCount: dates.length,
-    startDate: dates[0],
-    endDate: dates[dates.length - 1],
+    sampleCount: rows.length,
+    startDate: rows[0].date,
+    endDate: rows[rows.length - 1].date,
   });
 }
 
@@ -94,6 +111,42 @@ export function generateModelLotteryNumber(
 }
 
 export const DEFAULT_NEWS_BIAS_CAP = 0.15;
+
+function parseDateToMs(dateValue) {
+  if (typeof dateValue !== "string") {
+    return null;
+  }
+  const candidate = dateValue.includes("T") ? dateValue : `${dateValue}T00:00:00Z`;
+  const parsed = Date.parse(candidate);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isParsableIsoDateLike(dateValue) {
+  return parseDateToMs(dateValue) !== null;
+}
+
+function resolveNowMs(rawNow) {
+  if (rawNow instanceof Date && Number.isFinite(rawNow.getTime())) {
+    return rawNow.getTime();
+  }
+  if (Number.isFinite(rawNow)) {
+    return rawNow;
+  }
+  const parsed = typeof rawNow === "string" ? Date.parse(rawNow) : NaN;
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function newsRecencyWeight(suggestion, nowMs, halfLifeDays) {
+  const drawDateMs = parseDateToMs(suggestion?.drawDate);
+  if (drawDateMs === null || !Number.isFinite(nowMs) || halfLifeDays <= 0) {
+    return 1;
+  }
+  const ageInDrawCycles = Math.max(
+    0,
+    (nowMs - drawDateMs) / (MS_PER_DAY * THAI_LOTTERY_DRAW_CYCLE_DAYS),
+  );
+  return Math.pow(0.5, ageInDrawCycles / halfLifeDays);
+}
 
 function isNewsletterValid(news) {
   return (
@@ -137,6 +190,12 @@ function startingPositionForSuggestionLength(length, totalPositions) {
 export function applyNewsBias(model, news, options = {}) {
   const enabled = options.enabled !== false;
   const cap = Number.isFinite(options.cap) ? options.cap : DEFAULT_NEWS_BIAS_CAP;
+  const newsHalfLifeDays = Number.isFinite(options.newsRecencyHalfLifeDays)
+    ? options.newsRecencyHalfLifeDays
+    : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
+  const nowMs = resolveNowMs(options.now);
+  const shouldApplyCap = newsHalfLifeDays > 0;
+  const shouldApplyRecency = newsHalfLifeDays > 0;
 
   if (!enabled || !isNewsletterValid(news)) {
     return Object.freeze({
@@ -161,6 +220,11 @@ export function applyNewsBias(model, news, options = {}) {
   const totalPositions = biased.length;
 
   for (const suggestion of news.suggestedNumbers) {
+    const shouldSkipWithoutRecencyDate = shouldApplyRecency
+      && !isParsableIsoDateLike(suggestion?.drawDate);
+    if (shouldSkipWithoutRecencyDate) {
+      continue;
+    }
     if (!isValidSuggestion(suggestion)) {
       continue;
     }
@@ -171,12 +235,17 @@ export function applyNewsBias(model, news, options = {}) {
     if (start === null) {
       continue;
     }
+    const effectiveWeight = suggestion.weight * newsRecencyWeight(
+      suggestion,
+      nowMs,
+      newsHalfLifeDays,
+    );
     for (let offset = 0; offset < suggestion.digits.length; offset += 1) {
       const positionIndex = start + offset;
       if (positionIndex < 0 || positionIndex >= totalPositions) {
         continue;
       }
-      biased[positionIndex][suggestion.digits[offset]] += suggestion.weight;
+      biased[positionIndex][suggestion.digits[offset]] += effectiveWeight;
     }
   }
 
@@ -197,6 +266,10 @@ export function applyNewsBias(model, news, options = {}) {
       0,
     ) - originalTotal;
     if (biasAdded <= 0) {
+      continue;
+    }
+    if (!shouldApplyCap) {
+      maxApplied = Math.max(maxApplied, biasAdded / originalTotal);
       continue;
     }
     const maxAllowed = cap * originalTotal;

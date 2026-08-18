@@ -2,16 +2,23 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
-} from "/lottery.mjs?v=6";
+} from "/lottery.mjs?v=9";
 
 const MODEL_URLS = [
-  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
   "/lottery_results.csv",
+  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
 ];
 const NEWS_URL = "/news.json";
+const DATA_SOURCE_META_URL = "/lottery_results.csv.meta.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
+const FALLBACK_DIGIT_COUNT = 6;
+const FALLBACK_RADIX = 10;
+const MAX_ATTEMPTS_PER_PICK = 1_000;
+const RECENT_PICK_HISTORY_KEY = "lottery_recent_picks";
+const MAX_RECENT_PICK_HISTORY = 25;
+const MAX_RECENT_SUFFIX_HISTORY = 25;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -19,6 +26,7 @@ const copyButton = document.querySelector("[data-copy]");
 const status = document.querySelector("[data-action-status]");
 const modelStatus = document.querySelector("[data-model-status]");
 const newsStatus = document.querySelector("[data-news-status]");
+const dataSourceStatus = document.querySelector("[data-data-source-status]");
 const newsToggle = document.querySelector("[data-news-toggle]");
 const newsToggleLabel =
   newsToggle && "checked" in newsToggle ? newsToggle : null;
@@ -30,6 +38,42 @@ const pickList = document.querySelector("[data-pick-list]");
 let historicModel = null;
 let activeModel = null;
 let news = null;
+let recentPickHistory = [];
+
+function loadRecentPickHistory() {
+  try {
+    const raw = globalThis.localStorage.getItem(RECENT_PICK_HISTORY_KEY);
+    if (raw === null) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((value) => /^\d{6}$/.test(value)).slice(0, MAX_RECENT_PICK_HISTORY);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentPickHistory(picks) {
+  try {
+    globalThis.localStorage.setItem(
+      RECENT_PICK_HISTORY_KEY,
+      JSON.stringify(picks),
+    );
+  } catch {
+    // localStorage may be unavailable or full; generation still works without history.
+  }
+}
+
+function recordRecentPicks(picks) {
+  const next = [...picks, ...recentPickHistory].filter(
+    (value, index, self) => /^\d{6}$/.test(value) && self.indexOf(value) === index,
+  );
+  recentPickHistory = next.slice(0, MAX_RECENT_PICK_HISTORY);
+  saveRecentPickHistory(recentPickHistory);
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -38,6 +82,68 @@ function formatDate(value) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function buildSet(values, extract) {
+  const set = new Set();
+  for (const value of values) {
+    if (!/^[0-9]{6}$/.test(value)) {
+      continue;
+    }
+    set.add(extract(value));
+    if (set.size >= MAX_RECENT_SUFFIX_HISTORY) {
+      break;
+    }
+  }
+  return set;
+}
+
+function humanRelativeTime(isoDate) {
+  const timestamp = Date.parse(isoDate);
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  const diffMs = Date.now() - timestamp;
+  const absMinutes = Math.max(1, Math.floor(Math.abs(diffMs) / (1000 * 60)));
+
+  if (absMinutes < 60) {
+    return `${absMinutes} minute${absMinutes === 1 ? "" : "s"} ago`;
+  }
+  const absHours = Math.floor(absMinutes / 60);
+  if (absHours < 24) {
+    return `${absHours} hour${absHours === 1 ? "" : "s"} ago`;
+  }
+  const absDays = Math.floor(absHours / 24);
+  if (absDays < 7) {
+    return `${absDays} day${absDays === 1 ? "" : "s"} ago`;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(timestamp);
+}
+
+function renderDataSourceStatus(meta) {
+  if (!dataSourceStatus) {
+    return;
+  }
+  if (!meta || typeof meta !== "object") {
+    dataSourceStatus.textContent = "Data sync metadata unavailable.";
+    return;
+  }
+  const syncedAtLabel = humanRelativeTime(meta.syncedAt);
+  const updatedAtLabel = humanRelativeTime(meta.sourceUpdatedAt);
+  const sourceLabel = updatedAtLabel
+    ? `source updated ${updatedAtLabel}`
+    : "source update time unavailable";
+
+  if (syncedAtLabel) {
+    dataSourceStatus.textContent = `Lottery data synced ${syncedAtLabel}; ${sourceLabel}.`;
+  } else {
+    dataSourceStatus.textContent = `Lottery data source synced; ${sourceLabel}.`;
+  }
 }
 
 function describeNewsInfluence(influence) {
@@ -79,8 +185,8 @@ function renderModelStatus() {
 }
 
 function buildFallbackModel() {
-  const positions = Array.from({ length: DIGIT_COUNT }, () =>
-    Array.from({ length: DIGIT_RADIX }, () => 1),
+  const positions = Array.from({ length: FALLBACK_DIGIT_COUNT }, () =>
+    Array.from({ length: FALLBACK_RADIX }, () => 1),
   );
   return Object.freeze({
     positions: Object.freeze(positions.map((frequencies) => Object.freeze(frequencies))),
@@ -211,24 +317,65 @@ function renderPickList(picks) {
   pickList.appendChild(fragment);
 }
 
+function generatePicks(model, count, randomSource = globalThis.crypto) {
+  if (!Number.isInteger(count) || count <= 0) {
+    return [];
+  }
+
+  const seen = new Set();
+  const picks = [];
+  const recentSet = new Set(recentPickHistory);
+  const recentSuffix3 = buildSet(recentPickHistory, (value) => value.slice(3));
+  const recentSuffix2 = buildSet(recentPickHistory, (value) => value.slice(4));
+  const seenSuffix3 = new Set();
+  const seenSuffix2 = new Set();
+
+  for (let i = 0; i < count; i += 1) {
+    let candidate;
+    let attempts = 0;
+    let rejectCandidate = true;
+
+    do {
+      candidate = generateModelLotteryNumber(model, randomSource);
+      attempts += 1;
+
+      const repeatsFull = recentSet.has(candidate) || seen.has(candidate);
+      const repeatsSuffix = seenSuffix3.has(candidate.slice(3))
+        || seenSuffix2.has(candidate.slice(4))
+        || recentSuffix3.has(candidate.slice(3))
+        || recentSuffix2.has(candidate.slice(4));
+
+      rejectCandidate = repeatsFull || repeatsSuffix;
+      if (!rejectCandidate) {
+        break;
+      }
+    } while (attempts < MAX_ATTEMPTS_PER_PICK);
+
+    seen.add(candidate);
+    recentSet.add(candidate);
+    seenSuffix3.add(candidate.slice(3));
+    seenSuffix2.add(candidate.slice(4));
+    picks.push(candidate);
+  }
+
+  return picks;
+}
+
 generateButton.addEventListener("click", () => {
   if (activeModel === null) {
     return;
   }
   const count = pickCount();
-  if (count === 1) {
-    const single = generateModelLotteryNumber(activeModel);
-    showNumber(single);
-    renderPickList([]);
+  const picks = generatePicks(activeModel, count);
+  if (picks.length === 0) {
     return;
   }
-  const picks = [];
-  for (let i = 0; i < count; i += 1) {
-    picks.push(generateModelLotteryNumber(activeModel));
-  }
+
   showNumber(picks[0]);
-  renderPickList(picks);
-  status.textContent = `${count} numbers generated.`;
+  renderPickList(picks.length > 1 ? picks.slice(1) : []);
+  recordRecentPicks(picks);
+  status.textContent =
+    picks.length === 1 ? "1 number generated." : `${picks.length} numbers generated.`;
 });
 
 if (newsToggleLabel) {
@@ -306,6 +453,9 @@ function markModelReady() {
 }
 
 async function initialize() {
+  recentPickHistory = loadRecentPickHistory();
+  await loadDataSourceMetadata();
+
   try {
     await loadModel();
     markModelReady();
@@ -317,14 +467,22 @@ async function initialize() {
   rebuildActiveModel();
 }
 
-    historicModel = buildFirstPrizeModel(await response.text());
-    renderModelStatus();
-    rebuildActiveModel();
-    generateButton.disabled = false;
-    status.textContent = "Historical model ready.";
+async function loadDataSourceMetadata() {
+  if (!dataSourceStatus) {
+    return;
+  }
+
+  try {
+    const response = await fetch(DATA_SOURCE_META_URL, { cache: "no-store" });
+
+    if (!response.ok) {
+      dataSourceStatus.textContent = "Data sync metadata unavailable.";
+      return;
+    }
+    const parsed = await response.json();
+    renderDataSourceStatus(parsed);
   } catch {
-    modelStatus.textContent = "Historical model unavailable.";
-    status.textContent = "Refresh the page to try loading the data again.";
+    dataSourceStatus.textContent = "Data sync metadata unavailable.";
   }
 }
 

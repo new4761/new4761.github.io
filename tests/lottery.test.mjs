@@ -31,13 +31,136 @@ test("builds positional frequencies from valid first-prize rows", () => {
   const expectedFirstPosition = [1, 1, 0, 0, 0, 0, 0, 0, 0, 1];
 
   // When
-  const model = buildFirstPrizeModel(fixtureCsv);
+  const model = buildFirstPrizeModel(fixtureCsv, { recencyHalfLife: 0 });
 
   // Then
   assert.deepEqual(model.positions[0], expectedFirstPosition);
   assert.equal(model.sampleCount, 3);
   assert.equal(model.startDate, "2024-01-01");
   assert.equal(model.endDate, "2024-02-01");
+});
+
+test("apply recency weighting to recent draws by default", () => {
+  const model = buildFirstPrizeModel(fixtureCsv, { recencyHalfLife: 1 });
+
+  // With half-life=1, row ages produce weights: 0.25, 0.5, 1.0
+  // The most recent draw at 2024-02-01 has first digit 9 and should dominate
+  // the first digit position.
+  assert.ok(model.positions[0][9] > model.positions[0][1]);
+  assert.ok(model.positions[0][1] > model.positions[0][0]);
+
+  assert.equal(model.positions[0][0], 0.25);
+  assert.equal(model.positions[0][1], 0.5);
+  assert.equal(model.positions[0][9], 1);
+});
+
+test("weights news suggestions by draw recency", () => {
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-recent",
+        drawDate: "2026-08-17",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-old",
+        drawDate: "2025-08-17",
+      },
+    ],
+  };
+
+  const unweighted = applyNewsBias(model, news, {
+    now: "2026-08-18T00:00:00Z",
+    newsRecencyHalfLifeDays: 0,
+  });
+  const weighted = applyNewsBias(model, news, {
+    now: "2026-08-18T00:00:00Z",
+    newsRecencyHalfLifeDays: 14,
+  });
+
+  // Unweighted adds both suggestions fully (200 total weight) to each 3-digit position.
+  assert.equal(unweighted.positions[3][1], 300);
+  assert.ok(weighted.positions[3][1] > 200);
+  assert.ok(weighted.positions[3][1] < unweighted.positions[3][1]);
+});
+
+test("news recency uses 14-day draw-cycle units", () => {
+  const model = uniformModel();
+  const baseNews = {
+    fetchedAt: "2026-09-14T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+  };
+  const oneCycleNews = {
+    ...baseNews,
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-cycle",
+        drawDate: "2026-09-01",
+      },
+    ],
+  };
+  const twoCyclesNews = {
+    ...baseNews,
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-cycle",
+        drawDate: "2026-08-17",
+      },
+    ],
+  };
+  const oneCycleAgo = applyNewsBias(model, oneCycleNews, {
+    now: "2026-09-15T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+  const twoCyclesAgo = applyNewsBias(model, twoCyclesNews, {
+    now: "2026-09-14T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+
+  // With 14-day cycle normalization and half-life=1 cycle:
+  // one cycle ago: +50, two cycles ago: +25.
+  const oneCycleAgoApplied = oneCycleAgo.positions[3][1] - 100;
+  const twoCyclesAgoApplied = twoCyclesAgo.positions[3][1] - 100;
+  assert.ok(Math.abs(oneCycleAgoApplied - 50) < 1e-6);
+  assert.ok(Math.abs(twoCyclesAgoApplied - 25) < 1e-6);
+});
+
+test("news suggestions without draw date are ignored when recency weighting is enabled", () => {
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-09-14T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-unknown-date",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-old",
+        drawDate: "2026-09-01",
+      },
+    ],
+  };
+
+  const weighted = applyNewsBias(model, news, {
+    now: "2026-09-15T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+
+  assert.equal(weighted.positions[3][1], 150);
 });
 
 test("samples each digit from its historical position", () => {
@@ -100,7 +223,12 @@ test("applyNewsBias respects the 15% cap on suffix positions", () => {
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [0, 0, 1], weight: 200, source: "test" },
+      {
+        digits: [0, 0, 1],
+        weight: 200,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -129,7 +257,12 @@ test("applyNewsBias with disabled toggle returns pure-history model", () => {
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [1, 2, 3], weight: 1000, source: "test" },
+      {
+        digits: [1, 2, 3],
+        weight: 1000,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -189,7 +322,12 @@ test("applyNewsBias with 6-digit suggestion biases every position, capped at 15%
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [1, 2, 3, 4, 5, 6], weight: hugeBias, source: "test" },
+      {
+        digits: [1, 2, 3, 4, 5, 6],
+        weight: hugeBias,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -225,8 +363,18 @@ test("applyNewsBias with overlapping suggestions on the same suffix digit caps a
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "test" }],
     suggestedNumbers: [
-      { digits: [1, 0, 0], weight: 100, source: "test" },
-      { digits: [1, 2, 3], weight: 100, source: "test" },
+      {
+        digits: [1, 0, 0],
+        weight: 100,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -263,7 +411,12 @@ test("applyNewsBias aggregate bias never exceeds 15% within float tolerance unde
   const model = uniformModel();
   const suggestions = [];
   for (let i = 0; i < 100; i += 1) {
-    suggestions.push({ digits: [1, 0, 0], weight: 10, source: "stress" });
+    suggestions.push({
+      digits: [1, 0, 0],
+      weight: 10,
+      source: "stress",
+      drawDate: "2026-08-04",
+    });
   }
   const news = {
     fetchedAt: "2026-08-04T10:00:00Z",
