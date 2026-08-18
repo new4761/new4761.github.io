@@ -54,6 +54,42 @@ test("apply recency weighting to recent draws by default", () => {
   assert.equal(model.positions[0][9], 1);
 });
 
+test("weights news suggestions by draw recency", () => {
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-recent",
+        drawDate: "2026-08-17",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-old",
+        drawDate: "2025-08-17",
+      },
+    ],
+  };
+
+  const unweighted = applyNewsBias(model, news, {
+    now: "2026-08-18T00:00:00Z",
+    newsRecencyHalfLifeDays: 0,
+  });
+  const weighted = applyNewsBias(model, news, {
+    now: "2026-08-18T00:00:00Z",
+    newsRecencyHalfLifeDays: 14,
+  });
+
+  // Unweighted adds both suggestions fully (200 total weight) to each 3-digit position.
+  assert.equal(unweighted.positions[3][1], 300);
+  assert.ok(weighted.positions[3][1] > 200);
+  assert.ok(weighted.positions[3][1] < unweighted.positions[3][1]);
+});
+
 test("samples each digit from its historical position", () => {
   // Given
   const positions = Array.from({ length: 6 }, () => [

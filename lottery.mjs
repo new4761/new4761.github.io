@@ -2,6 +2,8 @@ const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
 const DEFAULT_RECENCY_HALF_LIFE = 24;
+const DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS = 14;
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -109,6 +111,35 @@ export function generateModelLotteryNumber(
 
 export const DEFAULT_NEWS_BIAS_CAP = 0.15;
 
+function parseDateToMs(dateValue) {
+  if (typeof dateValue !== "string") {
+    return null;
+  }
+  const candidate = dateValue.includes("T") ? dateValue : `${dateValue}T00:00:00Z`;
+  const parsed = Date.parse(candidate);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveNowMs(rawNow) {
+  if (rawNow instanceof Date && Number.isFinite(rawNow.getTime())) {
+    return rawNow.getTime();
+  }
+  if (Number.isFinite(rawNow)) {
+    return rawNow;
+  }
+  const parsed = typeof rawNow === "string" ? Date.parse(rawNow) : NaN;
+  return Number.isFinite(parsed) ? parsed : Date.now();
+}
+
+function newsRecencyWeight(suggestion, nowMs, halfLifeDays) {
+  const drawDateMs = parseDateToMs(suggestion?.drawDate);
+  if (drawDateMs === null || !Number.isFinite(nowMs) || halfLifeDays <= 0) {
+    return 1;
+  }
+  const ageDays = Math.max(0, (nowMs - drawDateMs) / MS_PER_DAY);
+  return Math.pow(0.5, ageDays / halfLifeDays);
+}
+
 function isNewsletterValid(news) {
   return (
     news !== null &&
@@ -151,6 +182,10 @@ function startingPositionForSuggestionLength(length, totalPositions) {
 export function applyNewsBias(model, news, options = {}) {
   const enabled = options.enabled !== false;
   const cap = Number.isFinite(options.cap) ? options.cap : DEFAULT_NEWS_BIAS_CAP;
+  const newsHalfLifeDays = Number.isFinite(options.newsRecencyHalfLifeDays)
+    ? options.newsRecencyHalfLifeDays
+    : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
+  const nowMs = resolveNowMs(options.now);
 
   if (!enabled || !isNewsletterValid(news)) {
     return Object.freeze({
@@ -185,12 +220,17 @@ export function applyNewsBias(model, news, options = {}) {
     if (start === null) {
       continue;
     }
+    const effectiveWeight = suggestion.weight * newsRecencyWeight(
+      suggestion,
+      nowMs,
+      newsHalfLifeDays,
+    );
     for (let offset = 0; offset < suggestion.digits.length; offset += 1) {
       const positionIndex = start + offset;
       if (positionIndex < 0 || positionIndex >= totalPositions) {
         continue;
       }
-      biased[positionIndex][suggestion.digits[offset]] += suggestion.weight;
+      biased[positionIndex][suggestion.digits[offset]] += effectiveWeight;
     }
   }
 

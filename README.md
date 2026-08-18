@@ -21,8 +21,9 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
   generation more than older draws.
 - **News-aware regeneration.** When enabled, a `news.json` file biases
   the last three positions by up to **15% of the historical weight per
-  position**. The historical model always supplies at least 85% of every
-  digit's weight. Toggle the influence on/off from the page; expand the
+  position**, with recent draw suggestions weighted more heavily than older
+  ones. The historical model always supplies at least 85% of every digit's
+  weight. Toggle the influence on/off from the page; expand the
   "Show the picks factored into this regen" disclosure to see the exact
   suggestions, draw dates, and weights used.
 - **Multi-pick mode.** Choose 1 / 3 / 5 / 10 picks per generate. The
