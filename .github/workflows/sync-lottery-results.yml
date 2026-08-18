@@ -82,7 +82,7 @@ jobs:
       - name: Commit synced CSV when changed
         if: steps.sync.outputs.changed == 'true'
         run: |
-          if git diff --quiet -- lottery_results.csv; then
+          if git diff --quiet -- lottery_results.csv && [ -z "$(git status --porcelain --untracked-files=normal -- lottery_results.csv)" ]; then
             echo "No diff after download."
             exit 0
           fi
