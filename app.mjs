@@ -14,6 +14,7 @@ const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
 const MODEL_FETCH_TIMEOUT_MS = 6000;
 const NEWS_FETCH_TIMEOUT_MS = 6000;
+const NEWS_STALE_DAYS = 30;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -53,6 +54,57 @@ function formatDate(value) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function parseIsoDateStart(value) {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+function filterRecentNews(rawNews) {
+  if (
+    rawNews === null ||
+    typeof rawNews !== "object" ||
+    !Array.isArray(rawNews.suggestedNumbers) ||
+    rawNews.suggestedNumbers.length === 0
+  ) {
+    return rawNews;
+  }
+
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const suggestion of rawNews.suggestedNumbers) {
+    if (!suggestion || typeof suggestion !== "object") {
+      continue;
+    }
+    if (typeof suggestion.drawDate !== "string") {
+      continue;
+    }
+    const ts = parseIsoDateStart(suggestion.drawDate);
+    if (ts !== null && ts > latest) {
+      latest = ts;
+    }
+  }
+
+  if (!Number.isFinite(latest)) {
+    return rawNews;
+  }
+
+  const staleCutoff = latest - NEWS_STALE_DAYS * 24 * 60 * 60 * 1000;
+  const filteredSuggestions = rawNews.suggestedNumbers.filter((suggestion) => {
+    if (!suggestion || typeof suggestion !== "object") {
+      return false;
+    }
+    if (typeof suggestion.drawDate !== "string") {
+      return false;
+    }
+    const ts = parseIsoDateStart(suggestion.drawDate);
+    return ts !== null && ts >= staleCutoff && ts <= latest;
+  });
+
+  return {
+    ...rawNews,
+    suggestedNumbers: filteredSuggestions,
+  };
 }
 
 function describeNewsInfluence(influence) {
@@ -349,7 +401,7 @@ async function loadNews() {
     }
     const parsed = await response.json();
     if (parsed && typeof parsed === "object") {
-      news = parsed;
+      news = filterRecentNews(parsed);
     }
   } catch {
     // Network or parse failure — silently fall back to pure-history mode.
