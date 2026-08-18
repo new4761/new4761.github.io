@@ -9,6 +9,7 @@ const MODEL_URLS = [
   "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
 ];
 const NEWS_URL = "/news.json";
+const DATA_SOURCE_META_URL = "/lottery_results.csv.meta.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
@@ -17,6 +18,7 @@ const FALLBACK_RADIX = 10;
 const MAX_ATTEMPTS_PER_PICK = 1_000;
 const RECENT_PICK_HISTORY_KEY = "lottery_recent_picks";
 const MAX_RECENT_PICK_HISTORY = 25;
+const MAX_RECENT_SUFFIX_HISTORY = 25;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -24,6 +26,7 @@ const copyButton = document.querySelector("[data-copy]");
 const status = document.querySelector("[data-action-status]");
 const modelStatus = document.querySelector("[data-model-status]");
 const newsStatus = document.querySelector("[data-news-status]");
+const dataSourceStatus = document.querySelector("[data-data-source-status]");
 const newsToggle = document.querySelector("[data-news-toggle]");
 const newsToggleLabel =
   newsToggle && "checked" in newsToggle ? newsToggle : null;
@@ -79,6 +82,68 @@ function formatDate(value) {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function buildSet(values, extract) {
+  const set = new Set();
+  for (const value of values) {
+    if (!/^[0-9]{6}$/.test(value)) {
+      continue;
+    }
+    set.add(extract(value));
+    if (set.size >= MAX_RECENT_SUFFIX_HISTORY) {
+      break;
+    }
+  }
+  return set;
+}
+
+function humanRelativeTime(isoDate) {
+  const timestamp = Date.parse(isoDate);
+  if (!Number.isFinite(timestamp)) {
+    return null;
+  }
+
+  const diffMs = Date.now() - timestamp;
+  const absMinutes = Math.max(1, Math.floor(Math.abs(diffMs) / (1000 * 60)));
+
+  if (absMinutes < 60) {
+    return `${absMinutes} minute${absMinutes === 1 ? "" : "s"} ago`;
+  }
+  const absHours = Math.floor(absMinutes / 60);
+  if (absHours < 24) {
+    return `${absHours} hour${absHours === 1 ? "" : "s"} ago`;
+  }
+  const absDays = Math.floor(absHours / 24);
+  if (absDays < 7) {
+    return `${absDays} day${absDays === 1 ? "" : "s"} ago`;
+  }
+  return new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(timestamp);
+}
+
+function renderDataSourceStatus(meta) {
+  if (!dataSourceStatus) {
+    return;
+  }
+  if (!meta || typeof meta !== "object") {
+    dataSourceStatus.textContent = "Data sync metadata unavailable.";
+    return;
+  }
+  const syncedAtLabel = humanRelativeTime(meta.syncedAt);
+  const updatedAtLabel = humanRelativeTime(meta.sourceUpdatedAt);
+  const sourceLabel = updatedAtLabel
+    ? `source updated ${updatedAtLabel}`
+    : "source update time unavailable";
+
+  if (syncedAtLabel) {
+    dataSourceStatus.textContent = `Lottery data synced ${syncedAtLabel}; ${sourceLabel}.`;
+  } else {
+    dataSourceStatus.textContent = `Lottery data source synced; ${sourceLabel}.`;
+  }
 }
 
 function describeNewsInfluence(influence) {
@@ -260,18 +325,36 @@ function generatePicks(model, count, randomSource = globalThis.crypto) {
   const seen = new Set();
   const picks = [];
   const recentSet = new Set(recentPickHistory);
+  const recentSuffix3 = buildSet(recentPickHistory, (value) => value.slice(3));
+  const recentSuffix2 = buildSet(recentPickHistory, (value) => value.slice(4));
+  const seenSuffix3 = new Set();
+  const seenSuffix2 = new Set();
 
   for (let i = 0; i < count; i += 1) {
     let candidate;
     let attempts = 0;
+    let rejectCandidate = true;
 
     do {
       candidate = generateModelLotteryNumber(model, randomSource);
       attempts += 1;
-    } while ((recentSet.has(candidate) || seen.has(candidate)) && attempts < MAX_ATTEMPTS_PER_PICK);
+
+      const repeatsFull = recentSet.has(candidate) || seen.has(candidate);
+      const repeatsSuffix = seenSuffix3.has(candidate.slice(3))
+        || seenSuffix2.has(candidate.slice(4))
+        || recentSuffix3.has(candidate.slice(3))
+        || recentSuffix2.has(candidate.slice(4));
+
+      rejectCandidate = repeatsFull || repeatsSuffix;
+      if (!rejectCandidate) {
+        break;
+      }
+    } while (attempts < MAX_ATTEMPTS_PER_PICK);
 
     seen.add(candidate);
     recentSet.add(candidate);
+    seenSuffix3.add(candidate.slice(3));
+    seenSuffix2.add(candidate.slice(4));
     picks.push(candidate);
   }
 
@@ -371,6 +454,7 @@ function markModelReady() {
 
 async function initialize() {
   recentPickHistory = loadRecentPickHistory();
+  await loadDataSourceMetadata();
 
   try {
     await loadModel();
@@ -381,6 +465,25 @@ async function initialize() {
 
   await loadNews();
   rebuildActiveModel();
+}
+
+async function loadDataSourceMetadata() {
+  if (!dataSourceStatus) {
+    return;
+  }
+
+  try {
+    const response = await fetch(DATA_SOURCE_META_URL, { cache: "no-store" });
+
+    if (!response.ok) {
+      dataSourceStatus.textContent = "Data sync metadata unavailable.";
+      return;
+    }
+    const parsed = await response.json();
+    renderDataSourceStatus(parsed);
+  } catch {
+    dataSourceStatus.textContent = "Data sync metadata unavailable.";
+  }
 }
 
 async function loadNews() {

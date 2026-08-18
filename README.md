@@ -30,7 +30,8 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
   first pick stays in the hero number; the rest render as a numbered
   list. A short local history is used to avoid repeating numbers
   immediately from one click to the next, and within each batch when
-  possible. Copy writes all picks (newline-joined) to the clipboard.
+  possible. The generator also avoids reusing recent last-2 and last-3
+  digit tails when possible.
 - **Privacy.** All generation runs in the browser. No upload, no
   tracking, no accounts.
 
