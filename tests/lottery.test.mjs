@@ -223,7 +223,12 @@ test("applyNewsBias respects the 15% cap on suffix positions", () => {
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [0, 0, 1], weight: 200, source: "test" },
+      {
+        digits: [0, 0, 1],
+        weight: 200,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -252,7 +257,12 @@ test("applyNewsBias with disabled toggle returns pure-history model", () => {
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [1, 2, 3], weight: 1000, source: "test" },
+      {
+        digits: [1, 2, 3],
+        weight: 1000,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -312,7 +322,12 @@ test("applyNewsBias with 6-digit suggestion biases every position, capped at 15%
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "thaiger" }],
     suggestedNumbers: [
-      { digits: [1, 2, 3, 4, 5, 6], weight: hugeBias, source: "test" },
+      {
+        digits: [1, 2, 3, 4, 5, 6],
+        weight: hugeBias,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -348,8 +363,18 @@ test("applyNewsBias with overlapping suggestions on the same suffix digit caps a
     fetchedAt: "2026-08-04T10:00:00Z",
     sources: [{ id: "test" }],
     suggestedNumbers: [
-      { digits: [1, 0, 0], weight: 100, source: "test" },
-      { digits: [1, 2, 3], weight: 100, source: "test" },
+      {
+        digits: [1, 0, 0],
+        weight: 100,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "test",
+        drawDate: "2026-08-04",
+      },
     ],
   };
 
@@ -386,7 +411,12 @@ test("applyNewsBias aggregate bias never exceeds 15% within float tolerance unde
   const model = uniformModel();
   const suggestions = [];
   for (let i = 0; i < 100; i += 1) {
-    suggestions.push({ digits: [1, 0, 0], weight: 10, source: "stress" });
+    suggestions.push({
+      digits: [1, 0, 0],
+      weight: 10,
+      source: "stress",
+      drawDate: "2026-08-04",
+    });
   }
   const news = {
     fetchedAt: "2026-08-04T10:00:00Z",
