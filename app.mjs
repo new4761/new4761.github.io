@@ -5,8 +5,8 @@ import {
 } from "/lottery.mjs?v=6";
 
 const MODEL_URLS = [
-  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
   "/lottery_results.csv",
+  "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
 ];
 const NEWS_URL = "/news.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
