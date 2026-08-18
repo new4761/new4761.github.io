@@ -135,6 +135,34 @@ test("news recency uses 14-day draw-cycle units", () => {
   assert.ok(Math.abs(twoCyclesAgoApplied - 25) < 1e-6);
 });
 
+test("news suggestions without draw date are ignored when recency weighting is enabled", () => {
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-09-14T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-unknown-date",
+      },
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-old",
+        drawDate: "2026-09-01",
+      },
+    ],
+  };
+
+  const weighted = applyNewsBias(model, news, {
+    now: "2026-09-15T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+
+  assert.equal(weighted.positions[3][1], 150);
+});
+
 test("samples each digit from its historical position", () => {
   // Given
   const positions = Array.from({ length: 6 }, () => [

@@ -121,6 +121,10 @@ function parseDateToMs(dateValue) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function isParsableIsoDateLike(dateValue) {
+  return parseDateToMs(dateValue) !== null;
+}
+
 function resolveNowMs(rawNow) {
   if (rawNow instanceof Date && Number.isFinite(rawNow.getTime())) {
     return rawNow.getTime();
@@ -191,6 +195,7 @@ export function applyNewsBias(model, news, options = {}) {
     : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
   const nowMs = resolveNowMs(options.now);
   const shouldApplyCap = newsHalfLifeDays > 0;
+  const shouldApplyRecency = newsHalfLifeDays > 0;
 
   if (!enabled || !isNewsletterValid(news)) {
     return Object.freeze({
@@ -215,6 +220,11 @@ export function applyNewsBias(model, news, options = {}) {
   const totalPositions = biased.length;
 
   for (const suggestion of news.suggestedNumbers) {
+    const shouldSkipWithoutRecencyDate = shouldApplyRecency
+      && !isParsableIsoDateLike(suggestion?.drawDate);
+    if (shouldSkipWithoutRecencyDate) {
+      continue;
+    }
     if (!isValidSuggestion(suggestion)) {
       continue;
     }
