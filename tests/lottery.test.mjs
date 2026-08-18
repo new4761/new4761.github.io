@@ -92,9 +92,23 @@ test("weights news suggestions by draw recency", () => {
 
 test("news recency uses 14-day draw-cycle units", () => {
   const model = uniformModel();
-  const news = {
+  const baseNews = {
     fetchedAt: "2026-09-14T00:00:00Z",
     sources: [{ id: "thaiger" }],
+  };
+  const oneCycleNews = {
+    ...baseNews,
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-cycle",
+        drawDate: "2026-09-01",
+      },
+    ],
+  };
+  const twoCyclesNews = {
+    ...baseNews,
     suggestedNumbers: [
       {
         digits: [1, 2, 3],
@@ -104,20 +118,21 @@ test("news recency uses 14-day draw-cycle units", () => {
       },
     ],
   };
-
-  const oneCycleAgo = applyNewsBias(model, news, {
-    now: "2026-09-01T00:00:00Z",
+  const oneCycleAgo = applyNewsBias(model, oneCycleNews, {
+    now: "2026-09-15T00:00:00Z",
     newsRecencyHalfLifeDays: 1,
   });
-  const twoCyclesAgo = applyNewsBias(model, news, {
+  const twoCyclesAgo = applyNewsBias(model, twoCyclesNews, {
     now: "2026-09-14T00:00:00Z",
     newsRecencyHalfLifeDays: 1,
   });
 
   // With 14-day cycle normalization and half-life=1 cycle:
   // one cycle ago: +50, two cycles ago: +25.
-  assert.equal(oneCycleAgo.positions[3][1], 150);
-  assert.equal(twoCyclesAgo.positions[3][1], 125);
+  const oneCycleAgoApplied = oneCycleAgo.positions[3][1] - 100;
+  const twoCyclesAgoApplied = twoCyclesAgo.positions[3][1] - 100;
+  assert.ok(Math.abs(oneCycleAgoApplied - 50) < 1e-6);
+  assert.ok(Math.abs(twoCyclesAgoApplied - 25) < 1e-6);
 });
 
 test("samples each digit from its historical position", () => {
