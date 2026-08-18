@@ -319,6 +319,33 @@ test("applyNewsBias uses max weight for duplicate suggestions from the same sour
   assert.equal(biased.positions[5][9], 108);
 });
 
+test("applyNewsBias lowers older suggestions with recency half-life weighting", () => {
+  // Given
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      // Older by 1 day; with half-life 1, this is 50% impact.
+      { digits: [9, 9], weight: 10, source: "thaiger", drawDate: "2026-08-17" },
+      // Newer pick stays full weight.
+      { digits: [8, 8], weight: 10, source: "thaiger", drawDate: "2026-08-18" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news, { newsRecencyHalfLifeDays: 1 });
+
+  // Then
+  // Position 4: +10 for 8, +5 for 9 -> 110 and 105 respectively.
+  assert.equal(biased.positions[4][8], 110);
+  assert.equal(biased.positions[4][9], 105);
+  // Position 5 mirrors the same weighting.
+  assert.equal(biased.positions[5][8], 110);
+  assert.equal(biased.positions[5][9], 105);
+  assert.equal(biased.newsInfluence.applied, 0.015);
+});
+
 test("filterRecentNewsSuggestions keeps suggestions inside freshness window", () => {
   // Given
   const news = {

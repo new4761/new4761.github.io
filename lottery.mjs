@@ -3,6 +3,8 @@ const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
 export const DEFAULT_NEWS_STALE_DAYS = 30;
 const DEFAULT_NEWS_SOURCE_LABEL = "unknown";
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS = 14;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -229,12 +231,45 @@ function getNewsSourceId(value) {
   return DEFAULT_NEWS_SOURCE_LABEL;
 }
 
-function aggregateNewsSuggestions(suggestions) {
+function computeRecencyScale(latestMs, suggestionTs, halfLifeDays) {
+  if (!Number.isFinite(latestMs) || !Number.isFinite(suggestionTs) || halfLifeDays <= 0) {
+    return 1;
+  }
+
+  if (suggestionTs >= latestMs) {
+    return 1;
+  }
+
+  const ageDays = (latestMs - suggestionTs) / MS_PER_DAY;
+  return Math.pow(0.5, ageDays / halfLifeDays);
+}
+
+function aggregateNewsSuggestions(suggestions, options = {}) {
+  const halfLifeDays =
+    Number.isFinite(options.newsRecencyHalfLifeDays) &&
+    options.newsRecencyHalfLifeDays > 0
+      ? options.newsRecencyHalfLifeDays
+      : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
+
   const aggregated = new Map();
   const sources = new Set();
+  const validSuggestions = suggestions.filter(isValidSuggestion);
+  let latestTs = Number.NEGATIVE_INFINITY;
+  for (const suggestion of validSuggestions) {
+    const suggestionTs = parseNewsDate(suggestion.drawDate);
+    if (Number.isFinite(suggestionTs) && suggestionTs > latestTs) {
+      latestTs = suggestionTs;
+    }
+  }
 
-  for (const suggestion of suggestions) {
-    if (!isValidSuggestion(suggestion)) {
+  const hasLatestTs = Number.isFinite(latestTs);
+
+  for (const suggestion of validSuggestions) {
+    const suggestionTs = parseNewsDate(suggestion.drawDate);
+    const suggestionWeight = hasLatestTs
+      ? suggestion.weight * computeRecencyScale(latestTs, suggestionTs, halfLifeDays)
+      : suggestion.weight;
+    if (!Number.isFinite(suggestionWeight) || suggestionWeight <= 0) {
       continue;
     }
     const source = suggestion.source;
@@ -250,7 +285,7 @@ function aggregateNewsSuggestions(suggestions) {
         digits: suggestion.digits,
         weight: suggestion.weight,
       });
-    }
+  }
   }
 
   return {
@@ -296,7 +331,7 @@ export function applyNewsBias(model, news, options = {}) {
   }
 
   const biased = model.positions.map((frequencies) => Array.from(frequencies));
-  const aggregate = aggregateNewsSuggestions(news.suggestedNumbers);
+  const aggregate = aggregateNewsSuggestions(news.suggestedNumbers, options);
   const sourceCount =
     Array.isArray(news.sources) && news.sources.length > 0
       ? news.sources.length
