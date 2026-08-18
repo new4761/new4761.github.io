@@ -104,6 +104,13 @@ function filterRecentNews(rawNews) {
   return {
     ...rawNews,
     suggestedNumbers: filteredSuggestions,
+    _staleFilter: {
+      applied: filteredSuggestions.length < rawNews.suggestedNumbers.length,
+      removedCount:
+        rawNews.suggestedNumbers.length - filteredSuggestions.length,
+      latestDate: new Date(latest).toISOString().slice(0, 10),
+      staleDays: NEWS_STALE_DAYS,
+    },
   };
 }
 
@@ -125,6 +132,11 @@ function describeNewsState() {
   if (!news || !Array.isArray(news.suggestedNumbers) || news.suggestedNumbers.length === 0) {
     return "News data unavailable — pure-history mode.";
   }
+  const staleFilter = news._staleFilter;
+  const staleSuffix =
+    staleFilter && staleFilter.applied && staleFilter.removedCount > 0
+      ? ` (filtered out ${staleFilter.removedCount} older suggestions)`
+      : "";
   const hoursSince = news.freshness && Number.isFinite(news.freshness.hoursSinceLastDraw)
     ? Math.round(news.freshness.hoursSinceLastDraw)
     : null;
@@ -133,7 +145,7 @@ function describeNewsState() {
     : "recent Thaiger draw available";
   return `${news.suggestedNumbers.length} suggestion${
     news.suggestedNumbers.length === 1 ? "" : "s"
-  } · ${recency}`;
+  } · ${recency}${staleSuffix}`;
 }
 
 function renderModelStatus() {
