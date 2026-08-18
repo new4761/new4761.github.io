@@ -90,6 +90,36 @@ test("weights news suggestions by draw recency", () => {
   assert.ok(weighted.positions[3][1] < unweighted.positions[3][1]);
 });
 
+test("news recency uses 14-day draw-cycle units", () => {
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-09-14T00:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      {
+        digits: [1, 2, 3],
+        weight: 100,
+        source: "thaiger-cycle",
+        drawDate: "2026-08-17",
+      },
+    ],
+  };
+
+  const oneCycleAgo = applyNewsBias(model, news, {
+    now: "2026-09-01T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+  const twoCyclesAgo = applyNewsBias(model, news, {
+    now: "2026-09-14T00:00:00Z",
+    newsRecencyHalfLifeDays: 1,
+  });
+
+  // With 14-day cycle normalization and half-life=1 cycle:
+  // one cycle ago: +50, two cycles ago: +25.
+  assert.equal(oneCycleAgo.positions[3][1], 150);
+  assert.equal(twoCyclesAgo.positions[3][1], 125);
+});
+
 test("samples each digit from its historical position", () => {
   // Given
   const positions = Array.from({ length: 6 }, () => [
