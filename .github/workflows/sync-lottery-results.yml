@@ -90,6 +90,49 @@ jobs:
         run: |
           node --input-type=module -e "import fs from 'node:fs';import { buildFirstPrizeModel } from './lottery.mjs';const csvText = fs.readFileSync('lottery_results.csv','utf8');const model = buildFirstPrizeModel(csvText);if (!model || !Number.isInteger(model.sampleCount) || model.sampleCount < 1){console.error('lottery_results.csv does not contain any valid first-prize rows.');process.exit(1);}if (!model.startDate || !model.endDate){console.error('lottery_results.csv missing usable date range metadata.');process.exit(1);}console.log(`Validated lottery_results.csv: sampleCount=${model.sampleCount}, range=${model.startDate}..${model.endDate}`);"
 
+      - name: Reject suspicious lottery results regression
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { execSync } from "node:child_process";
+          import { buildFirstPrizeModel } from "./lottery.mjs";
+          const next = buildFirstPrizeModel(fs.readFileSync("lottery_results.csv", "utf8"));
+          let current;
+          try {
+            current = execSync("git show HEAD:lottery_results.csv", {
+              stdio: ["ignore", "pipe", "ignore"],
+            }).toString("utf8");
+          } catch {
+            console.log("No baseline lottery_results.csv in current revision; skipping regression check.");
+            process.exit(0);
+          }
+
+          const currentModel = buildFirstPrizeModel(current);
+          const minGrowthRatio = 0.8;
+          if (
+            Number.isInteger(currentModel.sampleCount) &&
+            Number.isInteger(next.sampleCount) &&
+            next.sampleCount < Math.floor(currentModel.sampleCount * minGrowthRatio)
+          ) {
+            console.error(
+              `lottery_results.csv sampleCount dropped too far: ${next.sampleCount} vs baseline ${currentModel.sampleCount}`
+            );
+            process.exit(1);
+          }
+
+          if (next.endDate < currentModel.endDate) {
+            console.error(
+              `lottery_results.csv endDate regressed: ${next.endDate} vs baseline ${currentModel.endDate}`
+            );
+            process.exit(1);
+          }
+
+          console.log(
+            `Regression check passed: sampleCount=${next.sampleCount} (baseline ${currentModel.sampleCount}), endDate=${next.endDate}`
+          );
+          NODE
+
       - name: Commit synced CSV when changed
         if: steps.sync.outputs.changed == 'true'
         run: |

@@ -69,6 +69,9 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
   `repository_dispatch` events from `new4761/Thai_lottery_analysis` and
   updates site-local `lottery_results.csv` only when the payload hash differs
   from the current file, so the data update is cheap and idempotent.
+  It validates the downloaded file with the same parser used at runtime and
+  rejects suspicious regressions (large sample-count drops or end-date backsteps)
+  before committing.
 - **`.github/workflows/test.yml`** — Runs `node --test` on every push to
   `main` and on PRs against `main`. Uses Node 22.
 
