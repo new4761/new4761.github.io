@@ -12,6 +12,8 @@ const NEWS_URL = "/news.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
+const MODEL_FETCH_TIMEOUT_MS = 6000;
+const NEWS_FETCH_TIMEOUT_MS = 6000;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -30,6 +32,19 @@ const pickList = document.querySelector("[data-pick-list]");
 let historicModel = null;
 let activeModel = null;
 let news = null;
+
+async function fetchWithTimeout(resource, options = {}, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort(new DOMException("Request timed out", "TimeoutError"));
+  }, timeoutMs);
+
+  try {
+    return await fetch(resource, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -267,7 +282,11 @@ async function loadModel() {
 
   for (const modelUrl of MODEL_URLS) {
     try {
-      const response = await fetch(modelUrl);
+      const response = await fetchWithTimeout(
+        modelUrl,
+        {},
+        MODEL_FETCH_TIMEOUT_MS,
+      );
 
       if (!response.ok) {
         throw new Error(`Historical data request failed with ${response.status}`);
@@ -319,7 +338,11 @@ async function initialize() {
 
 async function loadNews() {
   try {
-    const response = await fetch(NEWS_URL);
+    const response = await fetchWithTimeout(
+      NEWS_URL,
+      {},
+      NEWS_FETCH_TIMEOUT_MS,
+    );
 
     if (!response.ok) {
       return;
