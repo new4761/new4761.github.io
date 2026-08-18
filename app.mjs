@@ -2,6 +2,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
+  filterRecentNewsSuggestions,
 } from "/lottery.mjs?v=6";
 
 const MODEL_URLS = [
@@ -14,8 +15,6 @@ const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
 const MODEL_FETCH_TIMEOUT_MS = 6000;
 const NEWS_FETCH_TIMEOUT_MS = 6000;
-const NEWS_STALE_DAYS = 30;
-const NEWS_STALE_HOURS = NEWS_STALE_DAYS * 24;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -57,80 +56,8 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
-function parseIsoDateStart(value) {
-  const parsed = new Date(`${value}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
-}
-
 function filterRecentNews(rawNews) {
-  if (
-    rawNews === null ||
-    typeof rawNews !== "object" ||
-    !Array.isArray(rawNews.suggestedNumbers) ||
-    rawNews.suggestedNumbers.length === 0
-  ) {
-    return rawNews;
-  }
-
-  const freshnessHours =
-    rawNews.freshness && Number.isFinite(rawNews.freshness.hoursSinceLastDraw)
-      ? Number(rawNews.freshness.hoursSinceLastDraw)
-      : null;
-  if (freshnessHours !== null && freshnessHours > NEWS_STALE_HOURS) {
-    return {
-      ...rawNews,
-      suggestedNumbers: [],
-      _staleFilter: {
-        applied: true,
-        removedCount: rawNews.suggestedNumbers.length,
-        staleDays: NEWS_STALE_DAYS,
-        latestDate: null,
-        reason: `freshness older than ${NEWS_STALE_DAYS} days`,
-      },
-    };
-  }
-
-  let latest = Number.NEGATIVE_INFINITY;
-  for (const suggestion of rawNews.suggestedNumbers) {
-    if (!suggestion || typeof suggestion !== "object") {
-      continue;
-    }
-    if (typeof suggestion.drawDate !== "string") {
-      continue;
-    }
-    const ts = parseIsoDateStart(suggestion.drawDate);
-    if (ts !== null && ts > latest) {
-      latest = ts;
-    }
-  }
-
-  if (!Number.isFinite(latest)) {
-    return rawNews;
-  }
-
-  const staleCutoff = latest - NEWS_STALE_DAYS * 24 * 60 * 60 * 1000;
-  const filteredSuggestions = rawNews.suggestedNumbers.filter((suggestion) => {
-    if (!suggestion || typeof suggestion !== "object") {
-      return false;
-    }
-    if (typeof suggestion.drawDate !== "string") {
-      return false;
-    }
-    const ts = parseIsoDateStart(suggestion.drawDate);
-    return ts !== null && ts >= staleCutoff && ts <= latest;
-  });
-
-  return {
-    ...rawNews,
-    suggestedNumbers: filteredSuggestions,
-    _staleFilter: {
-      applied: filteredSuggestions.length < rawNews.suggestedNumbers.length,
-      removedCount:
-        rawNews.suggestedNumbers.length - filteredSuggestions.length,
-      latestDate: new Date(latest).toISOString().slice(0, 10),
-      staleDays: NEWS_STALE_DAYS,
-    },
-  };
+  return filterRecentNewsSuggestions(rawNews, { staleDays: 30 });
 }
 
 function describeNewsInfluence(influence) {

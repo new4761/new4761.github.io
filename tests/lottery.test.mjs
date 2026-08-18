@@ -5,6 +5,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
+  filterRecentNewsSuggestions,
 } from "../lottery.mjs";
 
 function sourceFrom(bytes) {
@@ -286,4 +287,47 @@ test("applyNewsBias aggregate bias never exceeds 15% within float tolerance unde
   );
   assert.equal(biased.newsInfluence.applied, 0.15);
   assert.equal(biased.newsInfluence.capped, true);
+});
+
+test("filterRecentNewsSuggestions keeps suggestions inside freshness window", () => {
+  // Given
+  const news = {
+    suggestedNumbers: [
+      { digits: [1, 2, 3], weight: 1, drawDate: "2026-08-16" },
+      { digits: [4, 5, 6], weight: 1, drawDate: "2026-07-01" },
+      { digits: [9, 8, 7], weight: 1, drawDate: "2026-08-05" },
+    ],
+  };
+
+  // When
+  const filtered = filterRecentNewsSuggestions(news, { staleDays: 14 });
+
+  // Then
+  assert.equal(filtered.suggestedNumbers.length, 2);
+  assert.equal(filtered._staleFilter.applied, true);
+  assert.equal(filtered._staleFilter.removedCount, 1);
+  const dates = filtered.suggestedNumbers
+    .map((suggestion) => suggestion.drawDate)
+    .sort();
+  assert.deepEqual(dates, ["2026-08-05", "2026-08-16"]);
+});
+
+test("filterRecentNewsSuggestions disables all suggestions when freshness is stale", () => {
+  // Given
+  const news = {
+    freshness: { hoursSinceLastDraw: 500 },
+    suggestedNumbers: [
+      { digits: [0, 0, 4], weight: 1, drawDate: "2026-08-16" },
+      { digits: [1, 1], weight: 1, drawDate: "2026-08-15" },
+    ],
+  };
+
+  // When
+  const filtered = filterRecentNewsSuggestions(news, { staleDays: 14 });
+
+  // Then
+  assert.equal(filtered.suggestedNumbers.length, 0);
+  assert.equal(filtered._staleFilter.applied, true);
+  assert.equal(filtered._staleFilter.removedCount, 2);
+  assert.ok(filtered._staleFilter.reason.includes("freshness"));
 });

@@ -1,6 +1,7 @@
 const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
+export const DEFAULT_NEWS_STALE_DAYS = 30;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -21,6 +22,92 @@ function isIsoDate(value) {
     Date.UTC(Number(year), Number(month) - 1, Number(day)),
   );
   return parsed.toISOString().slice(0, 10) === value;
+}
+
+function parseNewsDate(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+export function filterRecentNewsSuggestions(rawNews, options = {}) {
+  const staleDays =
+    Number.isFinite(options.staleDays) && options.staleDays >= 0
+      ? options.staleDays
+      : DEFAULT_NEWS_STALE_DAYS;
+
+  if (
+    rawNews === null ||
+    typeof rawNews !== "object" ||
+    !Array.isArray(rawNews.suggestedNumbers) ||
+    rawNews.suggestedNumbers.length === 0
+  ) {
+    return rawNews;
+  }
+
+  const freshnessHours =
+    rawNews.freshness && Number.isFinite(rawNews.freshness.hoursSinceLastDraw)
+      ? Number(rawNews.freshness.hoursSinceLastDraw)
+      : null;
+
+  if (
+    freshnessHours !== null &&
+    freshnessHours > staleDays * 24 &&
+    rawNews.suggestedNumbers.length > 0
+  ) {
+    return {
+      ...rawNews,
+      suggestedNumbers: [],
+      _staleFilter: {
+        applied: true,
+        removedCount: rawNews.suggestedNumbers.length,
+        staleDays,
+        latestDate: null,
+        reason: `freshness older than ${staleDays} days`,
+      },
+    };
+  }
+
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const suggestion of rawNews.suggestedNumbers) {
+    if (!suggestion || typeof suggestion !== "object") {
+      continue;
+    }
+    const ts = parseNewsDate(suggestion.drawDate);
+    if (ts !== null && ts > latest) {
+      latest = ts;
+    }
+  }
+
+  if (!Number.isFinite(latest)) {
+    return rawNews;
+  }
+
+  const staleCutoff = latest - staleDays * 24 * 60 * 60 * 1000;
+  const filteredSuggestions = rawNews.suggestedNumbers.filter((suggestion) => {
+    if (!suggestion || typeof suggestion !== "object") {
+      return false;
+    }
+    const ts = parseNewsDate(suggestion.drawDate);
+    return ts !== null && ts >= staleCutoff && ts <= latest;
+  });
+
+  if (filteredSuggestions.length === rawNews.suggestedNumbers.length) {
+    return rawNews;
+  }
+
+  return {
+    ...rawNews,
+    suggestedNumbers: filteredSuggestions,
+    _staleFilter: {
+      applied: true,
+      removedCount: rawNews.suggestedNumbers.length - filteredSuggestions.length,
+      latestDate: new Date(latest).toISOString().slice(0, 10),
+      staleDays,
+    },
+  };
 }
 
 function randomIndex(maxExclusive, randomSource) {
