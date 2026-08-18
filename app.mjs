@@ -2,7 +2,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
-} from "/lottery.mjs?v=6";
+} from "/lottery.mjs?v=7";
 
 const MODEL_URLS = [
   "/lottery_results.csv",
@@ -12,6 +12,9 @@ const NEWS_URL = "/news.json";
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
+const FALLBACK_DIGIT_COUNT = 6;
+const FALLBACK_RADIX = 10;
+const MAX_ATTEMPTS_PER_PICK = 1_000;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -79,8 +82,8 @@ function renderModelStatus() {
 }
 
 function buildFallbackModel() {
-  const positions = Array.from({ length: DIGIT_COUNT }, () =>
-    Array.from({ length: DIGIT_RADIX }, () => 1),
+  const positions = Array.from({ length: FALLBACK_DIGIT_COUNT }, () =>
+    Array.from({ length: FALLBACK_RADIX }, () => 1),
   );
   return Object.freeze({
     positions: Object.freeze(positions.map((frequencies) => Object.freeze(frequencies))),
@@ -211,24 +214,44 @@ function renderPickList(picks) {
   pickList.appendChild(fragment);
 }
 
+function generatePicks(model, count, randomSource = globalThis.crypto) {
+  if (!Number.isInteger(count) || count <= 0) {
+    return [];
+  }
+
+  const seen = new Set();
+  const picks = [];
+
+  for (let i = 0; i < count; i += 1) {
+    let candidate;
+    let attempts = 0;
+
+    do {
+      candidate = generateModelLotteryNumber(model, randomSource);
+      attempts += 1;
+    } while (seen.has(candidate) && attempts < MAX_ATTEMPTS_PER_PICK);
+
+    seen.add(candidate);
+    picks.push(candidate);
+  }
+
+  return picks;
+}
+
 generateButton.addEventListener("click", () => {
   if (activeModel === null) {
     return;
   }
   const count = pickCount();
-  if (count === 1) {
-    const single = generateModelLotteryNumber(activeModel);
-    showNumber(single);
-    renderPickList([]);
+  const picks = generatePicks(activeModel, count);
+  if (picks.length === 0) {
     return;
   }
-  const picks = [];
-  for (let i = 0; i < count; i += 1) {
-    picks.push(generateModelLotteryNumber(activeModel));
-  }
+
   showNumber(picks[0]);
-  renderPickList(picks);
-  status.textContent = `${count} numbers generated.`;
+  renderPickList(picks.length > 1 ? picks.slice(1) : []);
+  status.textContent =
+    picks.length === 1 ? "1 number generated." : `${picks.length} numbers generated.`;
 });
 
 if (newsToggleLabel) {
@@ -315,17 +338,6 @@ async function initialize() {
 
   await loadNews();
   rebuildActiveModel();
-}
-
-    historicModel = buildFirstPrizeModel(await response.text());
-    renderModelStatus();
-    rebuildActiveModel();
-    generateButton.disabled = false;
-    status.textContent = "Historical model ready.";
-  } catch {
-    modelStatus.textContent = "Historical model unavailable.";
-    status.textContent = "Refresh the page to try loading the data again.";
-  }
 }
 
 async function loadNews() {
