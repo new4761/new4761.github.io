@@ -4,6 +4,7 @@ const UINT32_RANGE = 2 ** 32;
 const DEFAULT_RECENCY_HALF_LIFE = 24;
 const DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS = 14;
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const THAI_LOTTERY_DRAW_CYCLE_DAYS = 14;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -136,8 +137,11 @@ function newsRecencyWeight(suggestion, nowMs, halfLifeDays) {
   if (drawDateMs === null || !Number.isFinite(nowMs) || halfLifeDays <= 0) {
     return 1;
   }
-  const ageDays = Math.max(0, (nowMs - drawDateMs) / MS_PER_DAY);
-  return Math.pow(0.5, ageDays / halfLifeDays);
+  const ageInDrawCycles = Math.max(
+    0,
+    (nowMs - drawDateMs) / (MS_PER_DAY * THAI_LOTTERY_DRAW_CYCLE_DAYS),
+  );
+  return Math.pow(0.5, ageInDrawCycles / halfLifeDays);
 }
 
 function isNewsletterValid(news) {
