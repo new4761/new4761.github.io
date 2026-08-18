@@ -346,6 +346,28 @@ test("applyNewsBias lowers older suggestions with recency half-life weighting", 
   assert.equal(biased.newsInfluence.applied, 0.015);
 });
 
+test("applyNewsBias drops undated suggestions when other dated suggestions exist", () => {
+  // Given
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      { digits: [7, 7], weight: 10, source: "thaiger", drawDate: "2026-08-18" },
+      { digits: [8, 8], weight: 10, source: "thaiger" },
+      { digits: [9, 9], weight: 10, source: "thaiger", drawDate: "2026-08-17" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news, { newsRecencyHalfLifeDays: 1 });
+
+  // Then
+  // Only dated suggestions [7,7] and [9,9] are kept; [8,8] is ignored.
+  assert.equal(biased.newsInfluence.suggestions, 2);
+  assert.equal(biased.newsInfluence.applied, 0.015);
+});
+
 test("filterRecentNewsSuggestions keeps suggestions inside freshness window", () => {
   // Given
   const news = {

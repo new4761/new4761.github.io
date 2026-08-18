@@ -255,18 +255,25 @@ function aggregateNewsSuggestions(suggestions, options = {}) {
   const sources = new Set();
   const validSuggestions = suggestions.filter(isValidSuggestion);
   let latestTs = Number.NEGATIVE_INFINITY;
+  let hasAnyDate = false;
+
   for (const suggestion of validSuggestions) {
     const suggestionTs = parseNewsDate(suggestion.drawDate);
-    if (Number.isFinite(suggestionTs) && suggestionTs > latestTs) {
-      latestTs = suggestionTs;
+    if (Number.isFinite(suggestionTs)) {
+      hasAnyDate = true;
+      if (suggestionTs > latestTs) {
+        latestTs = suggestionTs;
+      }
     }
   }
 
-  const hasLatestTs = Number.isFinite(latestTs);
-
   for (const suggestion of validSuggestions) {
     const suggestionTs = parseNewsDate(suggestion.drawDate);
-    const suggestionWeight = hasLatestTs
+    if (hasAnyDate && !Number.isFinite(suggestionTs)) {
+      continue;
+    }
+
+    const suggestionWeight = hasAnyDate
       ? suggestion.weight * computeRecencyScale(latestTs, suggestionTs, halfLifeDays)
       : suggestion.weight;
     if (!Number.isFinite(suggestionWeight) || suggestionWeight <= 0) {
@@ -278,14 +285,14 @@ function aggregateNewsSuggestions(suggestions, options = {}) {
     sources.add(sourceId);
 
     const existing = aggregated.get(key);
-    if (!existing || suggestion.weight > existing.weight) {
+    if (!existing || suggestionWeight > existing.weight) {
       aggregated.set(key, {
         source,
         sourceId,
         digits: suggestion.digits,
-        weight: suggestion.weight,
+        weight: suggestionWeight,
       });
-  }
+    }
   }
 
   return {
