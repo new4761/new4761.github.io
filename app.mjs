@@ -3,7 +3,7 @@ import {
   generateModelLotteryNumber,
   applyNewsBias,
   filterRecentNewsSuggestions,
-} from "/lottery.mjs?v=6";
+} from "/lottery.mjs?v=7";
 
 const MODEL_URLS = [
   "/lottery_results.csv",
@@ -65,13 +65,23 @@ function describeNewsInfluence(influence) {
     return null;
   }
   const fraction = (influence.applied * 100).toFixed(influence.capped ? 0 : 1);
+  const sourceCount = influence.sources || 0;
+  const uniqueSuggestions = influence.suggestions || 0;
+  const rawSuggestions =
+    Number.isFinite(influence.rawSuggestions) && influence.rawSuggestions > 0
+      ? influence.rawSuggestions
+      : uniqueSuggestions;
+  const duplicateInfo =
+    rawSuggestions > uniqueSuggestions
+      ? ` (merged from ${rawSuggestions} raw suggestions)`
+      : "";
   return `adding ${fraction}% weight${
     influence.capped ? " (capped at 15%)" : ""
-  } across ${influence.sources} source${
-    influence.sources === 1 ? "" : "s"
+  } across ${sourceCount} source${
+    sourceCount === 1 ? "" : "s"
   } and ${influence.suggestions} suggestion${
-    influence.suggestions === 1 ? "" : "s"
-  }`;
+    uniqueSuggestions === 1 ? "" : "s"
+  }${duplicateInfo}`;
 }
 
 function describeNewsState() {

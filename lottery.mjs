@@ -298,6 +298,8 @@ function aggregateNewsSuggestions(suggestions, options = {}) {
   return {
     suggestions: [...aggregated.values()],
     sourceCount: sources.size,
+    rawSuggestionCount: validSuggestions.length,
+    aggregatedSuggestionCount: aggregated.size,
   };
 }
 
@@ -403,8 +405,17 @@ export function applyNewsBias(model, news, options = {}) {
     newsInfluence: Object.freeze({
       applied: maxApplied,
       capped,
+      aggregateReduction:
+        aggregate.rawSuggestionCount > aggregate.aggregatedSuggestionCount
+          ? aggregate.rawSuggestionCount - aggregate.aggregatedSuggestionCount
+          : 0,
+      rawSuggestions: aggregate.rawSuggestionCount,
       sources: sourceCount,
       suggestions: aggregate.suggestions.length,
+      duplicatesMerged: Math.max(
+        aggregate.rawSuggestionCount - aggregate.aggregatedSuggestionCount,
+        0,
+      ),
     }),
   });
 }
