@@ -10,7 +10,7 @@ suffix positions with news from The Thaiger.
 
 ### [Thai lottery number generator](https://new4761.github.io/tools/lottery/)
 
-Direct endpoint: https://new4761.github.io/tools/lottery/index.html
+Direct endpoint: https://new4761.github.io/tools/lottery/
 
 - **Historical model.** Fetches first from the site-local
   [`lottery_results.csv`](./lottery_results.csv) and falls back to

@@ -17,6 +17,8 @@ const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
 const MODEL_FETCH_TIMEOUT_MS = 6000;
 const NEWS_FETCH_TIMEOUT_MS = 6000;
+const NEWS_CACHE_KEY = "lottery_news_cache_v2";
+const NEWS_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -58,6 +60,141 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function hashText(value) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
+}
+
+function isNewsSuggestionLike(suggestion) {
+  if (!suggestion || typeof suggestion !== "object") {
+    return false;
+  }
+  if (!Array.isArray(suggestion.digits) || suggestion.digits.length === 0) {
+    return false;
+  }
+  const validLength =
+    suggestion.digits.length === 2 ||
+    suggestion.digits.length === 3 ||
+    suggestion.digits.length === 6;
+  if (!validLength) {
+    return false;
+  }
+  const hasDigits = suggestion.digits.every((digit) => {
+    const normalized = Number(digit);
+    return Number.isInteger(normalized) && normalized >= 0 && normalized <= 9;
+  });
+  const normalizedWeight = Number(suggestion.weight);
+  return hasDigits && Number.isFinite(normalizedWeight) && normalizedWeight > 0;
+}
+
+function sanitizeNewsPayload(rawNews) {
+  if (rawNews === null || typeof rawNews !== "object") {
+    return { news: null, validation: { malformedNews: true } };
+  }
+  if (!Array.isArray(rawNews.suggestedNumbers)) {
+    return { news: null, validation: { malformedNews: true } };
+  }
+
+  const validation = {
+    malformedSuggestionCount: 0,
+    malformedSuggestions: [],
+    source: "local",
+  };
+  const sanitizedSuggestions = [];
+
+  for (const suggestion of rawNews.suggestedNumbers) {
+    if (!isNewsSuggestionLike(suggestion)) {
+      validation.malformedSuggestionCount += 1;
+      continue;
+    }
+
+    sanitizedSuggestions.push({
+      ...suggestion,
+      digits: suggestion.digits.map((digit) => Number(digit)),
+      weight: Number(suggestion.weight),
+    });
+  }
+
+  return {
+    news: {
+      ...rawNews,
+      suggestedNumbers: sanitizedSuggestions,
+    },
+    validation,
+  };
+}
+
+function readNewsCache() {
+  try {
+    const raw = localStorage.getItem(NEWS_CACHE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (
+      !parsed ||
+      typeof parsed !== "object" ||
+      !parsed.payload ||
+      !Array.isArray(parsed.payload.suggestedNumbers)
+    ) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeNewsCache(payload) {
+  try {
+    localStorage.setItem(NEWS_CACHE_KEY, JSON.stringify(payload));
+  } catch {
+    // Ignore cache write failures in restricted browser contexts.
+  }
+}
+
+function isNewsCacheUsable(cache) {
+  return (
+    cache &&
+    Number.isFinite(cache.savedAt) &&
+    Date.now() - cache.savedAt <= NEWS_CACHE_MAX_AGE_MS &&
+    cache.payload &&
+    typeof cache.payload === "object" &&
+    Array.isArray(cache.payload.suggestedNumbers)
+  );
+}
+
+function decorateNewsWithCacheMeta(newsPayload, cacheMeta = null) {
+  if (!newsPayload || typeof newsPayload !== "object") {
+    return;
+  }
+  if (cacheMeta) {
+    newsPayload._cache = cacheMeta;
+  } else {
+    delete newsPayload._cache;
+  }
+}
+
+function applyNewsPayload(parsed, cacheMeta = null, fallbackCache = null) {
+  const sanitized = sanitizeNewsPayload(parsed);
+  if (sanitized.news === null) {
+    news = fallbackCache || null;
+    return;
+  }
+
+  const filtered = filterRecentNews(sanitized.news);
+  filtered._validation = {
+    ...sanitized.validation,
+    malformedSuggestionCount: sanitized.validation.malformedSuggestionCount,
+  };
+  decorateNewsWithCacheMeta(filtered, cacheMeta);
+  news = filtered;
+}
+
 function filterRecentNews(rawNews) {
   return filterRecentNewsSuggestions(rawNews, { staleDays: 30 });
 }
@@ -97,6 +234,14 @@ function describeNewsState() {
         staleFilter.removedCount === 1 ? "" : "s"
       } — pure-history mode${reason}.`;
     }
+    const cacheSource = news && news._cache && news._cache.source;
+    if (cacheSource === "fallback-cache" || cacheSource === "304-not-modified") {
+      const label =
+        cacheSource === "304-not-modified"
+          ? "cached payload (304)"
+          : "cached payload fallback";
+      return `News payload loaded from ${label}, but no active suggestions — pure-history mode.`;
+    }
     return "News data unavailable — pure-history mode.";
   }
   const staleFilter = news._staleFilter;
@@ -110,9 +255,17 @@ function describeNewsState() {
   const recency = hoursSince !== null && hoursSince >= 0
     ? `most recent Thaiger draw ${hoursSince}h ago`
     : "recent Thaiger draw available";
+  const malformedSuffix =
+    news._validation &&
+    news._validation.malformedSuggestionCount > 0
+      ? ` · ${news._validation.malformedSuggestionCount} malformed suggestion${
+          news._validation.malformedSuggestionCount === 1 ? "" : "s"
+        } removed`
+      : "";
+  const cacheSuffix = news._cache && news._cache.source ? ` · ${news._cache.source}` : "";
   return `${news.suggestedNumbers.length} suggestion${
     news.suggestedNumbers.length === 1 ? "" : "s"
-  } · ${recency}${staleSuffix}`;
+  }${malformedSuffix} · ${recency}${staleSuffix}${cacheSuffix}`;
 }
 
 function renderModelStatus() {
@@ -368,25 +521,98 @@ async function initialize() {
 }
 
 async function loadNews() {
+  const cachedNews = readNewsCache();
+  const headers = {};
+
+  if (cachedNews && cachedNews.etag) {
+    headers["If-None-Match"] = cachedNews.etag;
+  }
+  if (cachedNews && cachedNews.lastModified) {
+    headers["If-Modified-Since"] = cachedNews.lastModified;
+  }
+
   try {
     const response = await fetchWithTimeout(
       NEWS_URL,
-      {},
+      headers,
       NEWS_FETCH_TIMEOUT_MS,
     );
 
-    if (!response.ok) {
+    if (response.status === 304) {
+      if (isNewsCacheUsable(cachedNews)) {
+        news = JSON.parse(JSON.stringify(cachedNews.payload));
+        decorateNewsWithCacheMeta(news, {
+          source: "304-not-modified",
+          staleMs: Math.max(0, Date.now() - (cachedNews.savedAt || 0)),
+        });
+      } else {
+        news = null;
+      }
       return;
     }
-    const parsed = await response.json();
-    if (parsed && typeof parsed === "object" && Array.isArray(parsed.suggestedNumbers)) {
-      news = filterRecentNews(parsed);
+
+    if (!response.ok) {
+      if (cachedNews && isNewsCacheUsable(cachedNews)) {
+        news = JSON.parse(JSON.stringify(cachedNews.payload));
+        decorateNewsWithCacheMeta(news, {
+          source: "fallback-cache",
+          staleMs: Math.max(0, Date.now() - (cachedNews.savedAt || 0)),
+        });
+      } else {
+        news = null;
+      }
+      return;
+    }
+
+    const text = await response.text();
+    const responseHash = hashText(text);
+
+    if (
+      cachedNews &&
+      cachedNews.hash === responseHash &&
+      cachedNews.payload &&
+      Array.isArray(cachedNews.payload.suggestedNumbers)
+    ) {
+      news = JSON.parse(JSON.stringify(cachedNews.payload));
+      decorateNewsWithCacheMeta(news, {
+        source: "hash-match",
+        hash: responseHash,
+        staleMs: Math.max(0, Date.now() - (cachedNews.savedAt || 0)),
+      });
+      return;
+    }
+
+    const parsed = JSON.parse(text);
+    applyNewsPayload(parsed, {
+      source: "downloaded",
+    });
+
+    if (!news && cachedNews && isNewsCacheUsable(cachedNews)) {
+      news = JSON.parse(JSON.stringify(cachedNews.payload));
+      decorateNewsWithCacheMeta(news, {
+        source: "fallback-cache",
+        staleMs: Math.max(0, Date.now() - (cachedNews.savedAt || 0)),
+      });
+      return;
+    }
+
+    writeNewsCache({
+      savedAt: Date.now(),
+      hash: responseHash,
+      etag: response.headers.get("etag"),
+      lastModified: response.headers.get("last-modified"),
+      payload: news,
+    });
+  } catch {
+    if (cachedNews && isNewsCacheUsable(cachedNews)) {
+      news = JSON.parse(JSON.stringify(cachedNews.payload));
+      decorateNewsWithCacheMeta(news, {
+        source: "fallback-cache",
+        staleMs: Math.max(0, Date.now() - (cachedNews.savedAt || 0)),
+      });
     } else {
       news = null;
     }
-  } catch {
-    // Network or parse failure — silently fall back to pure-history mode.
-    news = null;
   }
 }
 
