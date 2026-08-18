@@ -97,7 +97,25 @@ jobs:
           import fs from "node:fs";
           import { execSync } from "node:child_process";
           import { buildFirstPrizeModel } from "./lottery.mjs";
+
+          const minGrowthRatio = 0.8;
+          const today = new Date().toISOString().slice(0, 10);
           const next = buildFirstPrizeModel(fs.readFileSync("lottery_results.csv", "utf8"));
+
+          if (next.endDate > today) {
+            console.error(
+              `lottery_results.csv endDate is in the future: ${next.endDate} > ${today}`,
+            );
+            process.exit(1);
+          }
+
+          if (next.startDate > next.endDate) {
+            console.error(
+              `lottery_results.csv date range is inverted: ${next.startDate} > ${next.endDate}`,
+            );
+            process.exit(1);
+          }
+
           let current;
           try {
             current = execSync("git show HEAD:lottery_results.csv", {
@@ -109,7 +127,11 @@ jobs:
           }
 
           const currentModel = buildFirstPrizeModel(current);
-          const minGrowthRatio = 0.8;
+          if (!currentModel || !Number.isFinite(currentModel.sampleCount)) {
+            console.error("Current lottery_results.csv failed model parse in baseline.");
+            process.exit(1);
+          }
+
           if (
             Number.isInteger(currentModel.sampleCount) &&
             Number.isInteger(next.sampleCount) &&

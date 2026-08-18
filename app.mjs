@@ -10,6 +10,8 @@ const MODEL_URLS = [
   "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
 ];
 const NEWS_URL = "/news.json";
+const DIGIT_COUNT = 6;
+const DIGIT_RADIX = 10;
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
@@ -377,8 +379,10 @@ async function loadNews() {
       return;
     }
     const parsed = await response.json();
-    if (parsed && typeof parsed === "object") {
+    if (parsed && typeof parsed === "object" && Array.isArray(parsed.suggestedNumbers)) {
       news = filterRecentNews(parsed);
+    } else {
+      news = null;
     }
   } catch {
     // Network or parse failure — silently fall back to pure-history mode.
