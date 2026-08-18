@@ -12,10 +12,13 @@ suffix positions with news from The Thaiger.
 
 Direct endpoint: https://new4761.github.io/tools/lottery/index.html
 
-- **Historical model.** Fetches
-  [`lottery_results.csv`](https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv)
-  from [`new4761/Thai_lottery_analysis`](https://github.com/new4761/Thai_lottery_analysis),
-  a monthly-updated dataset of GLO first-prize draws. Each digit position
+- **Historical model.** Fetches first from the site-local
+  [`lottery_results.csv`](./lottery_results.csv) and falls back to
+  [`https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv`](https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv)
+  if the local copy is missing. The file is refreshed on
+  `lottery-results-updated` `repository_dispatch` events from
+  `new4761/Thai_lottery_analysis` and only updated when checksum changes.
+  Each digit position
   (0 = millions down to 5 = units) is sampled from its own historical
   frequency distribution using the Web Crypto API.
 - **News-aware regeneration.** When enabled, a `news.json` file biases
@@ -62,6 +65,10 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
   08:00–12:00 UTC (bracketing the GLO draw publish at ~08:30 UTC). A
   watchdog step fails the workflow with an `::error::` annotation if the
   scraper writes zero suggestions.
+- **`.github/workflows/sync-lottery-results.yml`** — Handles
+  `repository_dispatch` events from `new4761/Thai_lottery_analysis` and
+  updates site-local `lottery_results.csv` only when the payload hash differs
+  from the current file, so the data update is cheap and idempotent.
 - **`.github/workflows/test.yml`** — Runs `node --test` on every push to
   `main` and on PRs against `main`. Uses Node 22.
 

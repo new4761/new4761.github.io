@@ -267,7 +267,7 @@ async function loadModel() {
 
   for (const modelUrl of MODEL_URLS) {
     try {
-      const response = await fetch(modelUrl, { cache: "no-store" });
+      const response = await fetch(modelUrl);
 
       if (!response.ok) {
         throw new Error(`Historical data request failed with ${response.status}`);
@@ -317,20 +317,9 @@ async function initialize() {
   rebuildActiveModel();
 }
 
-    historicModel = buildFirstPrizeModel(await response.text());
-    renderModelStatus();
-    rebuildActiveModel();
-    generateButton.disabled = false;
-    status.textContent = "Historical model ready.";
-  } catch {
-    modelStatus.textContent = "Historical model unavailable.";
-    status.textContent = "Refresh the page to try loading the data again.";
-  }
-}
-
 async function loadNews() {
   try {
-    const response = await fetch(NEWS_URL, { cache: "no-store" });
+    const response = await fetch(NEWS_URL);
 
     if (!response.ok) {
       return;

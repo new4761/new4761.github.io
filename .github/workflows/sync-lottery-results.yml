@@ -1,0 +1,99 @@
+name: Sync lottery_results.csv
+
+on:
+  repository_dispatch:
+    types:
+      - lottery-results-updated
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        required: false
+        description: Source repository with raw lottery CSV
+        default: new4761/Thai_lottery_analysis
+      source_ref:
+        required: false
+        description: Source Git ref to read
+        default: main
+      source_sha:
+        required: false
+        description: Optional source commit SHA for traceability
+      expected_sha:
+        required: false
+        description: Optional expected SHA-256 of lottery_results.csv
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve sync inputs
+        id: sync
+        run: |
+          incoming_sha="${{ github.event.client_payload.lottery_results_csv_sha || github.event.inputs.expected_sha }}"
+          source_repo="${{ github.event.client_payload.source_repo || github.event.inputs.source_repo || 'new4761/Thai_lottery_analysis' }}"
+          source_ref="${{ github.event.client_payload.source_ref || github.event.inputs.source_ref || 'main' }}"
+          source_sha="${{ github.event.client_payload.source_sha || github.event.inputs.source_sha }}"
+
+          echo "incoming_sha=${incoming_sha}" >> "$GITHUB_OUTPUT"
+          echo "source_repo=$source_repo" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
+
+          if [ -f lottery_results.csv ]; then
+            local_sha="$(sha256sum lottery_results.csv | awk '{print $1}')"
+          else
+            local_sha="missing"
+          fi
+          echo "local_sha=$local_sha" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip sync when file hash is unchanged
+        if: steps.sync.outputs.changed == 'false'
+        run: |
+          echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+
+      - name: Download latest lottery_results.csv
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          SOURCE_URL="https://raw.githubusercontent.com/${{ steps.sync.outputs.source_repo }}/${{ steps.sync.outputs.source_ref }}/lottery_results.csv"
+          echo "Downloading from $SOURCE_URL"
+          curl -fsSL "$SOURCE_URL" -o lottery_results.csv
+
+          if [ -n "${{ steps.sync.outputs.incoming_sha }}" ]; then
+            downloaded_sha=$(sha256sum lottery_results.csv | awk '{print $1}')
+            if [ "$downloaded_sha" != "${{ steps.sync.outputs.incoming_sha }}" ]; then
+              echo "::error::Downloaded SHA mismatch for lottery_results.csv"
+              echo "Expected: ${{ steps.sync.outputs.incoming_sha }}"
+              echo "Received: $downloaded_sha"
+              exit 1
+            fi
+          fi
+
+      - name: Commit synced CSV when changed
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          if git diff --quiet -- lottery_results.csv; then
+            echo "No diff after download."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lottery_results.csv
+
+          commit_title="Sync lottery_results.csv"
+          if [ -n "${{ steps.sync.outputs.source_sha }}" ]; then
+            commit_title="$commit_title from ${{ steps.sync.outputs.source_sha }}."
+          fi
+          git commit -m "$commit_title"
+          git push
