@@ -81,6 +81,9 @@ async function main() {
   }
 
   const csvText = await loadRemoteCsv();
+  if (typeof csvText !== "string" || csvText.trim().length === 0) {
+    throw new Error("Downloaded lottery_results.csv payload is empty.");
+  }
   if (!isValidCsv(csvText)) {
     throw new Error(`Downloaded content from raw URL is not a valid lottery_results.csv payload`);
   }
@@ -100,4 +103,3 @@ main().then((hasChanges) => {
   console.error("sync-lottery-results failed:", error);
   process.exit(1);
 });
-

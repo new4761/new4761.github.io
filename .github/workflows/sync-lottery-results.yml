@@ -25,6 +25,19 @@ jobs:
         id: sync
         run: |
           node scripts/sync-lottery-results.mjs
+          if [ ! -s lottery_results.csv ]; then
+            echo "::error::lottery_results.csv is missing or empty after sync."
+            exit 1
+          fi
+          if [ ! -s lottery_results.csv.sha ]; then
+            echo "::error::lottery_results.csv.sha is missing after sync."
+            exit 1
+          fi
+          if git diff --quiet -- lottery_results.csv lottery_results.csv.sha; then
+            echo "Sync status: unchanged"
+          else
+            echo "Sync status: updated"
+          fi
 
       - name: Commit if changed
         run: |
