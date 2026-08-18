@@ -31,13 +31,27 @@ test("builds positional frequencies from valid first-prize rows", () => {
   const expectedFirstPosition = [1, 1, 0, 0, 0, 0, 0, 0, 0, 1];
 
   // When
-  const model = buildFirstPrizeModel(fixtureCsv);
+  const model = buildFirstPrizeModel(fixtureCsv, { recencyHalfLife: 0 });
 
   // Then
   assert.deepEqual(model.positions[0], expectedFirstPosition);
   assert.equal(model.sampleCount, 3);
   assert.equal(model.startDate, "2024-01-01");
   assert.equal(model.endDate, "2024-02-01");
+});
+
+test("apply recency weighting to recent draws by default", () => {
+  const model = buildFirstPrizeModel(fixtureCsv, { recencyHalfLife: 1 });
+
+  // With half-life=1, row ages produce weights: 0.25, 0.5, 1.0
+  // The most recent draw at 2024-02-01 has first digit 9 and should dominate
+  // the first digit position.
+  assert.ok(model.positions[0][9] > model.positions[0][1]);
+  assert.ok(model.positions[0][1] > model.positions[0][0]);
+
+  assert.equal(model.positions[0][0], 0.25);
+  assert.equal(model.positions[0][1], 0.5);
+  assert.equal(model.positions[0][9], 1);
 });
 
 test("samples each digit from its historical position", () => {

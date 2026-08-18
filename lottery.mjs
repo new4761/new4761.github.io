@@ -1,6 +1,7 @@
 const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
+const DEFAULT_RECENCY_HALF_LIFE = 24;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -48,11 +49,16 @@ function sampleDigit(frequencies, randomSource) {
   throw new ModelDataError("Position frequencies do not contain a sample");
 }
 
-export function buildFirstPrizeModel(csvText) {
+export function buildFirstPrizeModel(
+  csvText,
+  { recencyHalfLife = DEFAULT_RECENCY_HALF_LIFE } = {},
+) {
+  const halfLife = Number.isFinite(recencyHalfLife) ? recencyHalfLife : DEFAULT_RECENCY_HALF_LIFE;
+  const useRecency = halfLife > 0;
   const positions = Array.from({ length: DIGIT_COUNT }, () =>
     Array(DIGIT_RADIX).fill(0),
   );
-  const dates = [];
+  const rows = [];
 
   for (const row of csvText.split(/\r?\n/).slice(1)) {
     const firstSeparator = row.indexOf(",");
@@ -64,23 +70,31 @@ export function buildFirstPrizeModel(csvText) {
       continue;
     }
 
-    dates.push(date);
-    Array.from(firstPrize, Number).forEach((digit, position) => {
-      positions[position][digit] += 1;
-    });
+    rows.push({ date, firstPrize: Array.from(firstPrize, Number) });
   }
 
-  if (dates.length === 0) {
+  if (rows.length === 0) {
     throw new ModelDataError("No valid first-prize rows were found");
+  }
+
+  rows.sort((a, b) => a.date.localeCompare(b.date));
+
+  for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
+    const age = rows.length - 1 - rowIndex;
+    const weight = useRecency ? Math.pow(0.5, age / halfLife) : 1;
+    const digits = rows[rowIndex].firstPrize;
+    digits.forEach((digit, position) => {
+      positions[position][digit] += weight;
+    });
   }
 
   return Object.freeze({
     positions: Object.freeze(
       positions.map((frequencies) => Object.freeze(frequencies)),
     ),
-    sampleCount: dates.length,
-    startDate: dates[0],
-    endDate: dates[dates.length - 1],
+    sampleCount: rows.length,
+    startDate: rows[0].date,
+    endDate: rows[rows.length - 1].date,
   });
 }
 
