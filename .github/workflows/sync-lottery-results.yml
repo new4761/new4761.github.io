@@ -39,6 +39,12 @@ jobs:
           source_ref="${{ github.event.client_payload.source_ref || github.event.inputs.source_ref || 'main' }}"
           source_sha="${{ github.event.client_payload.source_sha || github.event.inputs.source_sha }}"
 
+          if [ -z "$incoming_sha" ]; then
+            incoming_sha="$(curl -fsSL -H 'Accept: application/vnd.github.v3+json' \
+              "https://api.github.com/repos/${source_repo}/contents/lottery_results.csv?ref=${source_ref}" \
+              | node -e 'const fs = require(\"fs\");const payload = JSON.parse(fs.readFileSync(0, \"utf8\"));process.stdout.write(payload.sha || \"\")')"
+          fi
+
           echo "incoming_sha=${incoming_sha}" >> "$GITHUB_OUTPUT"
           echo "source_repo=$source_repo" >> "$GITHUB_OUTPUT"
           echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
@@ -78,6 +84,11 @@ jobs:
               exit 1
             fi
           fi
+
+      - name: Validate lottery_results.csv format and contents
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';import { buildFirstPrizeModel } from './lottery.mjs';const csvText = fs.readFileSync('lottery_results.csv','utf8');const model = buildFirstPrizeModel(csvText);if (!model || !Number.isInteger(model.sampleCount) || model.sampleCount < 1){console.error('lottery_results.csv does not contain any valid first-prize rows.');process.exit(1);}if (!model.startDate || !model.endDate){console.error('lottery_results.csv missing usable date range metadata.');process.exit(1);}console.log(`Validated lottery_results.csv: sampleCount=${model.sampleCount}, range=${model.startDate}..${model.endDate}`);"
 
       - name: Commit synced CSV when changed
         if: steps.sync.outputs.changed == 'true'
