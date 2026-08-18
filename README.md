@@ -28,8 +28,9 @@ Direct endpoint: https://new4761.github.io/tools/lottery/index.html
   suggestions, draw dates, and weights used.
 - **Multi-pick mode.** Choose 1 / 3 / 5 / 10 picks per generate. The
   first pick stays in the hero number; the rest render as a numbered
-  list. Numbers in one batch are deduplicated whenever possible; copy
-  writes all picks (newline-joined) to the clipboard.
+  list. A short local history is used to avoid repeating numbers
+  immediately from one click to the next, and within each batch when
+  possible. Copy writes all picks (newline-joined) to the clipboard.
 - **Privacy.** All generation runs in the browser. No upload, no
   tracking, no accounts.
 

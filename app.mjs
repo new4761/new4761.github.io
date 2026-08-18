@@ -15,6 +15,8 @@ const FALLBACK_SAMPLE_COUNT = 120;
 const FALLBACK_DIGIT_COUNT = 6;
 const FALLBACK_RADIX = 10;
 const MAX_ATTEMPTS_PER_PICK = 1_000;
+const RECENT_PICK_HISTORY_KEY = "lottery_recent_picks";
+const MAX_RECENT_PICK_HISTORY = 25;
 
 const output = document.querySelector("[data-number-output]");
 const generateButton = document.querySelector("[data-generate]");
@@ -33,6 +35,42 @@ const pickList = document.querySelector("[data-pick-list]");
 let historicModel = null;
 let activeModel = null;
 let news = null;
+let recentPickHistory = [];
+
+function loadRecentPickHistory() {
+  try {
+    const raw = globalThis.localStorage.getItem(RECENT_PICK_HISTORY_KEY);
+    if (raw === null) {
+      return [];
+    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed.filter((value) => /^\d{6}$/.test(value)).slice(0, MAX_RECENT_PICK_HISTORY);
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentPickHistory(picks) {
+  try {
+    globalThis.localStorage.setItem(
+      RECENT_PICK_HISTORY_KEY,
+      JSON.stringify(picks),
+    );
+  } catch {
+    // localStorage may be unavailable or full; generation still works without history.
+  }
+}
+
+function recordRecentPicks(picks) {
+  const next = [...picks, ...recentPickHistory].filter(
+    (value, index, self) => /^\d{6}$/.test(value) && self.indexOf(value) === index,
+  );
+  recentPickHistory = next.slice(0, MAX_RECENT_PICK_HISTORY);
+  saveRecentPickHistory(recentPickHistory);
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -221,6 +259,7 @@ function generatePicks(model, count, randomSource = globalThis.crypto) {
 
   const seen = new Set();
   const picks = [];
+  const recentSet = new Set(recentPickHistory);
 
   for (let i = 0; i < count; i += 1) {
     let candidate;
@@ -229,9 +268,10 @@ function generatePicks(model, count, randomSource = globalThis.crypto) {
     do {
       candidate = generateModelLotteryNumber(model, randomSource);
       attempts += 1;
-    } while (seen.has(candidate) && attempts < MAX_ATTEMPTS_PER_PICK);
+    } while ((recentSet.has(candidate) || seen.has(candidate)) && attempts < MAX_ATTEMPTS_PER_PICK);
 
     seen.add(candidate);
+    recentSet.add(candidate);
     picks.push(candidate);
   }
 
@@ -250,6 +290,7 @@ generateButton.addEventListener("click", () => {
 
   showNumber(picks[0]);
   renderPickList(picks.length > 1 ? picks.slice(1) : []);
+  recordRecentPicks(picks);
   status.textContent =
     picks.length === 1 ? "1 number generated." : `${picks.length} numbers generated.`;
 });
@@ -329,6 +370,8 @@ function markModelReady() {
 }
 
 async function initialize() {
+  recentPickHistory = loadRecentPickHistory();
+
   try {
     await loadModel();
     markModelReady();
