@@ -10,6 +10,7 @@ const MODEL_URLS = [
 ];
 const NEWS_URL = "/news.json";
 const NEWS_FETCH_TIMEOUT_MS = 6000;
+const MODEL_FETCH_TIMEOUT_MS = 12000;
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
@@ -295,7 +296,7 @@ async function loadModel() {
 
   for (const modelUrl of MODEL_URLS) {
     try {
-      const response = await fetch(modelUrl);
+      const response = await fetchWithTimeout(modelUrl, { cache: "no-store" }, MODEL_FETCH_TIMEOUT_MS);
 
       if (!response.ok) {
         throw new Error(`Historical data request failed with ${response.status}`);
