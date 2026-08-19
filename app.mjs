@@ -101,7 +101,6 @@ function sanitizeNewsPayload(rawNews) {
 
   const validation = {
     malformedSuggestionCount: 0,
-    malformedSuggestions: [],
     source: "local",
   };
   const sanitizedSuggestions = [];

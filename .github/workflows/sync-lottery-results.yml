@@ -57,6 +57,14 @@ jobs:
           fi
           echo "local_sha=$local_sha" >> "$GITHUB_OUTPUT"
 
+          source_commit_info="$(curl -fsSL -H 'Accept: application/vnd.github.v3+json' \
+            "https://api.github.com/repos/${source_repo}/commits?path=lottery_results.csv&sha=${source_ref}&per_page=1")"
+          source_commit_sha="$(printf '%s' "$source_commit_info" | node -e 'const fs = require("fs");const payload = JSON.parse(fs.readFileSync(0, "utf8"));process.stdout.write(Array.isArray(payload) && payload[0] && payload[0].sha ? payload[0].sha : "")')"
+          source_commit_date="$(printf '%s' "$source_commit_info" | node -e 'const fs = require("fs");const payload = JSON.parse(fs.readFileSync(0, "utf8"));process.stdout.write(Array.isArray(payload) && payload[0] && payload[0].commit && payload[0].commit.committer && payload[0].commit.committer.date ? payload[0].commit.committer.date : "")')"
+
+          echo "source_commit_sha=$source_commit_sha" >> "$GITHUB_OUTPUT"
+          echo "source_commit_date=$source_commit_date" >> "$GITHUB_OUTPUT"
+
           if [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
@@ -66,13 +74,24 @@ jobs:
       - name: Skip sync when file hash is unchanged
         if: steps.sync.outputs.changed == 'false'
         run: |
-          echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+            echo "Latest source commit: ${{ steps.sync.outputs.source_commit_sha }} (${{ steps.sync.outputs.source_commit_date }})"
+          else
+            echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+          fi
 
       - name: Download latest lottery_results.csv
         if: steps.sync.outputs.changed == 'true'
         run: |
           SOURCE_URL="https://raw.githubusercontent.com/${{ steps.sync.outputs.source_repo }}/${{ steps.sync.outputs.source_ref }}/lottery_results.csv"
           echo "Downloading from $SOURCE_URL"
+          if [ -n "${{ steps.sync.outputs.source_commit_sha }}" ]; then
+            echo "Source commit: ${{ steps.sync.outputs.source_commit_sha }}"
+          fi
+          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            echo "Source commit date: ${{ steps.sync.outputs.source_commit_date }}"
+          fi
           curl -fsSL "$SOURCE_URL" -o lottery_results.csv
 
           if [ -n "${{ steps.sync.outputs.incoming_sha }}" ]; then
@@ -170,6 +189,11 @@ jobs:
           commit_title="Sync lottery_results.csv"
           if [ -n "${{ steps.sync.outputs.source_sha }}" ]; then
             commit_title="$commit_title from ${{ steps.sync.outputs.source_sha }}."
+          elif [ -n "${{ steps.sync.outputs.source_commit_sha }}" ]; then
+            commit_title="$commit_title from ${{ steps.sync.outputs.source_commit_sha }}."
+          fi
+          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            commit_title="$commit_title @ ${{ steps.sync.outputs.source_commit_date }}."
           fi
           git commit -m "$commit_title"
           git push
