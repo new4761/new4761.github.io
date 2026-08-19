@@ -65,16 +65,28 @@ jobs:
           echo "source_commit_sha=$source_commit_sha" >> "$GITHUB_OUTPUT"
           echo "source_commit_date=$source_commit_date" >> "$GITHUB_OUTPUT"
 
-          if [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+          previous_source_sha="$(git log -n 1 --pretty=%B -- lottery_results.csv 2>/dev/null \
+            | node -e 'const fs = require("fs");const text = fs.readFileSync(0, "utf8");const match = text.match(/from\\s+([0-9a-f]{40})/i);process.stdout.write(match ? match[1] : "")')"
+          echo "previous_source_sha=$previous_source_sha" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$source_commit_sha" ] && [ -n "$previous_source_sha" ] && [ "$source_commit_sha" = "$previous_source_sha" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=source-commit-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=incoming-sha-unchanged" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "change_reason=content-changed" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Skip sync when file hash is unchanged
         if: steps.sync.outputs.changed == 'false'
         run: |
-          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+          if [ "${{ steps.sync.outputs.change_reason }}" = "source-commit-unchanged" ]; then
+            echo "No changes to lottery_results.csv (source commit unchanged)."
+            echo "Source commit already applied: ${{ steps.sync.outputs.previous_source_sha }}"
+          elif [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
             echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
             echo "Latest source commit: ${{ steps.sync.outputs.source_commit_sha }} (${{ steps.sync.outputs.source_commit_date }})"
           else
