@@ -32,6 +32,23 @@ let historicModel = null;
 let activeModel = null;
 let news = null;
 
+function isValidSuggestion(suggestion) {
+  const asDigits = suggestion?.digits;
+  if (!Array.isArray(asDigits)) {
+    return false;
+  }
+  const weight = suggestion?.weight;
+  return (
+    suggestion &&
+    typeof suggestion === "object" &&
+    asDigits.every((digit) => {
+      const parsed = Number(digit);
+      return Number.isInteger(parsed) && parsed >= 0 && parsed <= 9;
+    }) &&
+    Number.isFinite(weight)
+  );
+}
+
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
@@ -345,8 +362,15 @@ async function loadNews() {
       return;
     }
     const parsed = await response.json();
-    if (parsed && typeof parsed === "object") {
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray(parsed.suggestedNumbers) &&
+      parsed.suggestedNumbers.every(isValidSuggestion)
+    ) {
       news = parsed;
+    } else {
+      news = null;
     }
   } catch {
     // Network or parse failure — silently fall back to pure-history mode.
