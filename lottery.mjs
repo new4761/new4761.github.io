@@ -1,6 +1,10 @@
 const DIGIT_COUNT = 6;
 const DIGIT_RADIX = 10;
 const UINT32_RANGE = 2 ** 32;
+export const DEFAULT_NEWS_STALE_DAYS = 30;
+const DEFAULT_NEWS_SOURCE_LABEL = "unknown";
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS = 14;
 
 export class ModelDataError extends Error {
   constructor(message) {
@@ -21,6 +25,92 @@ function isIsoDate(value) {
     Date.UTC(Number(year), Number(month) - 1, Number(day)),
   );
   return parsed.toISOString().slice(0, 10) === value;
+}
+
+function parseNewsDate(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+export function filterRecentNewsSuggestions(rawNews, options = {}) {
+  const staleDays =
+    Number.isFinite(options.staleDays) && options.staleDays >= 0
+      ? options.staleDays
+      : DEFAULT_NEWS_STALE_DAYS;
+
+  if (
+    rawNews === null ||
+    typeof rawNews !== "object" ||
+    !Array.isArray(rawNews.suggestedNumbers) ||
+    rawNews.suggestedNumbers.length === 0
+  ) {
+    return rawNews;
+  }
+
+  const freshnessHours =
+    rawNews.freshness && Number.isFinite(rawNews.freshness.hoursSinceLastDraw)
+      ? Number(rawNews.freshness.hoursSinceLastDraw)
+      : null;
+
+  if (
+    freshnessHours !== null &&
+    freshnessHours > staleDays * 24 &&
+    rawNews.suggestedNumbers.length > 0
+  ) {
+    return {
+      ...rawNews,
+      suggestedNumbers: [],
+      _staleFilter: {
+        applied: true,
+        removedCount: rawNews.suggestedNumbers.length,
+        staleDays,
+        latestDate: null,
+        reason: `freshness older than ${staleDays} days`,
+      },
+    };
+  }
+
+  let latest = Number.NEGATIVE_INFINITY;
+  for (const suggestion of rawNews.suggestedNumbers) {
+    if (!suggestion || typeof suggestion !== "object") {
+      continue;
+    }
+    const ts = parseNewsDate(suggestion.drawDate);
+    if (ts !== null && ts > latest) {
+      latest = ts;
+    }
+  }
+
+  if (!Number.isFinite(latest)) {
+    return rawNews;
+  }
+
+  const staleCutoff = latest - staleDays * 24 * 60 * 60 * 1000;
+  const filteredSuggestions = rawNews.suggestedNumbers.filter((suggestion) => {
+    if (!suggestion || typeof suggestion !== "object") {
+      return false;
+    }
+    const ts = parseNewsDate(suggestion.drawDate);
+    return ts !== null && ts >= staleCutoff && ts <= latest;
+  });
+
+  if (filteredSuggestions.length === rawNews.suggestedNumbers.length) {
+    return rawNews;
+  }
+
+  return {
+    ...rawNews,
+    suggestedNumbers: filteredSuggestions,
+    _staleFilter: {
+      applied: true,
+      removedCount: rawNews.suggestedNumbers.length - filteredSuggestions.length,
+      latestDate: new Date(latest).toISOString().slice(0, 10),
+      staleDays,
+    },
+  };
 }
 
 function randomIndex(maxExclusive, randomSource) {
@@ -121,6 +211,98 @@ function isValidSuggestion(suggestion) {
   );
 }
 
+function getNewsSourceId(value) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.length > 0) {
+      return trimmed.toLowerCase();
+    }
+  }
+
+  if (value !== null && typeof value === "object") {
+    if (typeof value.id === "string" && value.id.trim().length > 0) {
+      return value.id.trim().toLowerCase();
+    }
+    if (typeof value.name === "string" && value.name.trim().length > 0) {
+      return value.name.trim().toLowerCase();
+    }
+  }
+
+  return DEFAULT_NEWS_SOURCE_LABEL;
+}
+
+function computeRecencyScale(latestMs, suggestionTs, halfLifeDays) {
+  if (!Number.isFinite(latestMs) || !Number.isFinite(suggestionTs) || halfLifeDays <= 0) {
+    return 1;
+  }
+
+  if (suggestionTs >= latestMs) {
+    return 1;
+  }
+
+  const ageDays = (latestMs - suggestionTs) / MS_PER_DAY;
+  return Math.pow(0.5, ageDays / halfLifeDays);
+}
+
+function aggregateNewsSuggestions(suggestions, options = {}) {
+  const halfLifeDays =
+    Number.isFinite(options.newsRecencyHalfLifeDays) &&
+    options.newsRecencyHalfLifeDays > 0
+      ? options.newsRecencyHalfLifeDays
+      : DEFAULT_NEWS_RECENCY_HALF_LIFE_DAYS;
+
+  const aggregated = new Map();
+  const sources = new Set();
+  const validSuggestions = suggestions.filter(isValidSuggestion);
+  let latestTs = Number.NEGATIVE_INFINITY;
+  let hasAnyDate = false;
+
+  for (const suggestion of validSuggestions) {
+    const suggestionTs = parseNewsDate(suggestion.drawDate);
+    if (Number.isFinite(suggestionTs)) {
+      hasAnyDate = true;
+      if (suggestionTs > latestTs) {
+        latestTs = suggestionTs;
+      }
+    }
+  }
+
+  for (const suggestion of validSuggestions) {
+    const suggestionTs = parseNewsDate(suggestion.drawDate);
+    if (hasAnyDate && !Number.isFinite(suggestionTs)) {
+      continue;
+    }
+
+    const suggestionWeight = hasAnyDate
+      ? suggestion.weight * computeRecencyScale(latestTs, suggestionTs, halfLifeDays)
+      : suggestion.weight;
+    if (!Number.isFinite(suggestionWeight) || suggestionWeight <= 0) {
+      continue;
+    }
+    const source = suggestion.source;
+    const sourceId = getNewsSourceId(source);
+    const key = `${sourceId}:${suggestion.digits.join(".")}`;
+    sources.add(sourceId);
+
+    const existing = aggregated.get(key);
+    if (!existing || suggestionWeight > existing.weight) {
+      aggregated.set(key, {
+        source,
+        sourceId,
+        digits: suggestion.digits,
+        weight: suggestionWeight,
+      });
+    }
+  }
+
+  return {
+    suggestions: [...aggregated.values()],
+    sourceCount: sources.size,
+    rawSuggestionCount: validSuggestions.length,
+    aggregatedSuggestionCount: aggregated.size,
+  };
+}
+
 function startingPositionForSuggestionLength(length, totalPositions) {
   if (length === 6) {
     return 0;
@@ -158,12 +340,14 @@ export function applyNewsBias(model, news, options = {}) {
   }
 
   const biased = model.positions.map((frequencies) => Array.from(frequencies));
+  const aggregate = aggregateNewsSuggestions(news.suggestedNumbers, options);
+  const sourceCount =
+    Array.isArray(news.sources) && news.sources.length > 0
+      ? news.sources.length
+      : aggregate.sourceCount;
   const totalPositions = biased.length;
 
-  for (const suggestion of news.suggestedNumbers) {
-    if (!isValidSuggestion(suggestion)) {
-      continue;
-    }
+  for (const suggestion of aggregate.suggestions) {
     const start = startingPositionForSuggestionLength(
       suggestion.digits.length,
       totalPositions,
@@ -221,11 +405,17 @@ export function applyNewsBias(model, news, options = {}) {
     newsInfluence: Object.freeze({
       applied: maxApplied,
       capped,
-      sources:
-        Array.isArray(news.sources) && news.sources.length > 0
-          ? news.sources.length
-          : 1,
-      suggestions: news.suggestedNumbers.length,
+      aggregateReduction:
+        aggregate.rawSuggestionCount > aggregate.aggregatedSuggestionCount
+          ? aggregate.rawSuggestionCount - aggregate.aggregatedSuggestionCount
+          : 0,
+      rawSuggestions: aggregate.rawSuggestionCount,
+      sources: sourceCount,
+      suggestions: aggregate.suggestions.length,
+      duplicatesMerged: Math.max(
+        aggregate.rawSuggestionCount - aggregate.aggregatedSuggestionCount,
+        0,
+      ),
     }),
   });
 }

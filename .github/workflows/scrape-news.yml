@@ -21,6 +21,39 @@ jobs:
         with:
           node-version: 22
       - run: node scripts/scrape-news.mjs news.json
+      - name: Validate scraped news payload schema
+        run: |
+          node -e "
+          const fs = require('fs');
+          const news = JSON.parse(fs.readFileSync('news.json', 'utf8'));
+          if (!news || typeof news !== 'object') {
+            throw new Error('news.json must be a JSON object');
+          }
+          if (!Array.isArray(news.suggestedNumbers)) {
+            throw new Error('news.json must include suggestedNumbers as array');
+          }
+          const isDigits = (arr) =>
+            Array.isArray(arr) &&
+            (arr.length === 2 || arr.length === 3 || arr.length === 6) &&
+            arr.every((digit) => Number.isInteger(Number(digit)) && Number(digit) >= 0 && Number(digit) <= 9);
+          const invalid = [];
+          news.suggestedNumbers.forEach((suggestion, index) => {
+            if (
+              !suggestion ||
+              typeof suggestion !== 'object' ||
+              !isDigits(suggestion.digits) ||
+              typeof suggestion.weight !== 'number' ||
+              !Number.isFinite(suggestion.weight) ||
+              suggestion.weight <= 0
+            ) {
+              invalid.push(index);
+            }
+          });
+          if (invalid.length > 0) {
+            throw new Error(`news.json has ${invalid.length} malformed suggestion(s): ${invalid.slice(0, 20).join(',')}`);
+          }
+          console.log(`news.json schema valid with ${news.suggestedNumbers.length} suggestions`);
+          "
       - name: Commit if changed
         run: |
           if git diff --quiet -- news.json; then

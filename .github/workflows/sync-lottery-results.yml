@@ -39,6 +39,12 @@ jobs:
           source_ref="${{ github.event.client_payload.source_ref || github.event.inputs.source_ref || 'main' }}"
           source_sha="${{ github.event.client_payload.source_sha || github.event.inputs.source_sha }}"
 
+          if [ -z "$incoming_sha" ]; then
+            incoming_sha="$(curl -fsSL -H 'Accept: application/vnd.github.v3+json' \
+              "https://api.github.com/repos/${source_repo}/contents/lottery_results.csv?ref=${source_ref}" \
+              | node -e 'const fs = require(\"fs\");const payload = JSON.parse(fs.readFileSync(0, \"utf8\"));process.stdout.write(payload.sha || \"\")')"
+          fi
+
           echo "incoming_sha=${incoming_sha}" >> "$GITHUB_OUTPUT"
           echo "source_repo=$source_repo" >> "$GITHUB_OUTPUT"
           echo "source_ref=$source_ref" >> "$GITHUB_OUTPUT"
@@ -51,22 +57,64 @@ jobs:
           fi
           echo "local_sha=$local_sha" >> "$GITHUB_OUTPUT"
 
-          if [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+          source_commit_info="$(curl -fsSL -H 'Accept: application/vnd.github.v3+json' \
+            "https://api.github.com/repos/${source_repo}/commits?path=lottery_results.csv&sha=${source_ref}&per_page=1")"
+          source_commit_sha="$(printf '%s' "$source_commit_info" | node -e 'const fs = require("fs");const payload = JSON.parse(fs.readFileSync(0, "utf8"));process.stdout.write(Array.isArray(payload) && payload[0] && payload[0].sha ? payload[0].sha : "")')"
+          source_commit_date="$(printf '%s' "$source_commit_info" | node -e 'const fs = require("fs");const payload = JSON.parse(fs.readFileSync(0, "utf8"));process.stdout.write(Array.isArray(payload) && payload[0] && payload[0].commit && payload[0].commit.committer && payload[0].commit.committer.date ? payload[0].commit.committer.date : "")')"
+
+          echo "source_commit_sha=$source_commit_sha" >> "$GITHUB_OUTPUT"
+          echo "source_commit_date=$source_commit_date" >> "$GITHUB_OUTPUT"
+
+          previous_source_sha="$(git log -n 1 --pretty=%B -- lottery_results.csv 2>/dev/null \
+            | node -e 'const fs = require("fs");const text = fs.readFileSync(0, "utf8");const match = text.match(/from\\s+([0-9a-f]{40})/i);process.stdout.write(match ? match[1] : "")')"
+          echo "previous_source_sha=$previous_source_sha" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$source_commit_sha" ] && [ -n "$previous_source_sha" ] && [ "$source_commit_sha" = "$previous_source_sha" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=source-commit-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$source_sha" ] && [ -n "$previous_source_sha" ] && [ "$source_sha" = "$previous_source_sha" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=source-input-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$incoming_sha" ] && [ ${#incoming_sha} -eq 64 ] && [ "$incoming_sha" = "$local_sha" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=incoming-sha-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "change_reason=incoming-sha-different-format" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "change_reason=content-changed" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Skip sync when file hash is unchanged
         if: steps.sync.outputs.changed == 'false'
         run: |
-          echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+          if [ "${{ steps.sync.outputs.change_reason }}" = "source-commit-unchanged" ]; then
+            echo "No changes to lottery_results.csv (source commit unchanged)."
+            echo "Source commit already applied: ${{ steps.sync.outputs.previous_source_sha }}"
+          elif [ "${{ steps.sync.outputs.change_reason }}" = "source-input-unchanged" ]; then
+            echo "No changes to lottery_results.csv (source input commit unchanged)."
+            echo "Source commit already applied: ${{ steps.sync.outputs.source_sha }}"
+          elif [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+            echo "Latest source commit: ${{ steps.sync.outputs.source_commit_sha }} (${{ steps.sync.outputs.source_commit_date }})"
+          elif [ "${{ steps.sync.outputs.change_reason }}" = "incoming-sha-different-format" ]; then
+            echo "No changes to lottery_results.csv; incoming hash appears to be a source blob SHA while local is checksum."
+          else
+            echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
+          fi
 
       - name: Download latest lottery_results.csv
         if: steps.sync.outputs.changed == 'true'
         run: |
           SOURCE_URL="https://raw.githubusercontent.com/${{ steps.sync.outputs.source_repo }}/${{ steps.sync.outputs.source_ref }}/lottery_results.csv"
           echo "Downloading from $SOURCE_URL"
+          if [ -n "${{ steps.sync.outputs.source_commit_sha }}" ]; then
+            echo "Source commit: ${{ steps.sync.outputs.source_commit_sha }}"
+          fi
+          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            echo "Source commit date: ${{ steps.sync.outputs.source_commit_date }}"
+          fi
           curl -fsSL "$SOURCE_URL" -o lottery_results.csv
 
           if [ -n "${{ steps.sync.outputs.incoming_sha }}" ]; then
@@ -79,10 +127,80 @@ jobs:
             fi
           fi
 
+      - name: Validate lottery_results.csv format and contents
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          node --input-type=module -e "import fs from 'node:fs';import { buildFirstPrizeModel } from './lottery.mjs';const csvText = fs.readFileSync('lottery_results.csv','utf8');const model = buildFirstPrizeModel(csvText);if (!model || !Number.isInteger(model.sampleCount) || model.sampleCount < 1){console.error('lottery_results.csv does not contain any valid first-prize rows.');process.exit(1);}if (!model.startDate || !model.endDate){console.error('lottery_results.csv missing usable date range metadata.');process.exit(1);}console.log(`Validated lottery_results.csv: sampleCount=${model.sampleCount}, range=${model.startDate}..${model.endDate}`);"
+
+      - name: Reject suspicious lottery results regression
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          import { execSync } from "node:child_process";
+          import { buildFirstPrizeModel } from "./lottery.mjs";
+
+          const minGrowthRatio = 0.8;
+          const today = new Date().toISOString().slice(0, 10);
+          const next = buildFirstPrizeModel(fs.readFileSync("lottery_results.csv", "utf8"));
+
+          if (next.endDate > today) {
+            console.error(
+              `lottery_results.csv endDate is in the future: ${next.endDate} > ${today}`,
+            );
+            process.exit(1);
+          }
+
+          if (next.startDate > next.endDate) {
+            console.error(
+              `lottery_results.csv date range is inverted: ${next.startDate} > ${next.endDate}`,
+            );
+            process.exit(1);
+          }
+
+          let current;
+          try {
+            current = execSync("git show HEAD:lottery_results.csv", {
+              stdio: ["ignore", "pipe", "ignore"],
+            }).toString("utf8");
+          } catch {
+            console.log("No baseline lottery_results.csv in current revision; skipping regression check.");
+            process.exit(0);
+          }
+
+          const currentModel = buildFirstPrizeModel(current);
+          if (!currentModel || !Number.isFinite(currentModel.sampleCount)) {
+            console.error("Current lottery_results.csv failed model parse in baseline.");
+            process.exit(1);
+          }
+
+          if (
+            Number.isInteger(currentModel.sampleCount) &&
+            Number.isInteger(next.sampleCount) &&
+            next.sampleCount < Math.floor(currentModel.sampleCount * minGrowthRatio)
+          ) {
+            console.error(
+              `lottery_results.csv sampleCount dropped too far: ${next.sampleCount} vs baseline ${currentModel.sampleCount}`
+            );
+            process.exit(1);
+          }
+
+          if (next.endDate < currentModel.endDate) {
+            console.error(
+              `lottery_results.csv endDate regressed: ${next.endDate} vs baseline ${currentModel.endDate}`
+            );
+            process.exit(1);
+          }
+
+          console.log(
+            `Regression check passed: sampleCount=${next.sampleCount} (baseline ${currentModel.sampleCount}), endDate=${next.endDate}`
+          );
+          NODE
+
       - name: Commit synced CSV when changed
         if: steps.sync.outputs.changed == 'true'
         run: |
-          if git diff --quiet -- lottery_results.csv; then
+          if git diff --quiet -- lottery_results.csv && [ -z "$(git status --porcelain --untracked-files=normal -- lottery_results.csv)" ]; then
             echo "No diff after download."
             exit 0
           fi
@@ -94,6 +212,11 @@ jobs:
           commit_title="Sync lottery_results.csv"
           if [ -n "${{ steps.sync.outputs.source_sha }}" ]; then
             commit_title="$commit_title from ${{ steps.sync.outputs.source_sha }}."
+          elif [ -n "${{ steps.sync.outputs.source_commit_sha }}" ]; then
+            commit_title="$commit_title from ${{ steps.sync.outputs.source_commit_sha }}."
+          fi
+          if [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
+            commit_title="$commit_title @ ${{ steps.sync.outputs.source_commit_date }}."
           fi
           git commit -m "$commit_title"
           git push

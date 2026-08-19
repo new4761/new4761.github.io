@@ -5,6 +5,7 @@ import {
   buildFirstPrizeModel,
   generateModelLotteryNumber,
   applyNewsBias,
+  filterRecentNewsSuggestions,
 } from "../lottery.mjs";
 
 function sourceFrom(bytes) {
@@ -286,4 +287,126 @@ test("applyNewsBias aggregate bias never exceeds 15% within float tolerance unde
   );
   assert.equal(biased.newsInfluence.applied, 0.15);
   assert.equal(biased.newsInfluence.capped, true);
+});
+
+test("applyNewsBias uses max weight for duplicate suggestions from the same source", () => {
+  // Duplicate entries from one source for identical suggestion patterns should not
+  // be double counted; only the strongest suggestion is kept.
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-04T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      { digits: [1, 0, 0], weight: 100, source: "thaiger" },
+      { digits: [1, 0, 0], weight: 100, source: "thaiger" },
+      { digits: [1, 0, 0], weight: 20, source: "thaiger" },
+      { digits: [9, 9], weight: 8, source: "thaiger" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news);
+
+  // Then
+  // Only two unique suggestion keys are kept: 1,0,0 and 9,9.
+  assert.equal(biased.newsInfluence.suggestions, 2);
+  assert.equal(biased.newsInfluence.capped, false);
+  assert.equal(biased.newsInfluence.applied, 0.1);
+  // Position 3 adds +100 on digit 1 only (not +300), so total is 200.
+  assert.equal(biased.positions[3][1], 200);
+  // 9 appears in positions 4 and 5; not enough to cap.
+  assert.equal(biased.positions[4][9], 108);
+  assert.equal(biased.positions[5][9], 108);
+});
+
+test("applyNewsBias lowers older suggestions with recency half-life weighting", () => {
+  // Given
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      // Older by 1 day; with half-life 1, this is 50% impact.
+      { digits: [9, 9], weight: 10, source: "thaiger", drawDate: "2026-08-17" },
+      // Newer pick stays full weight.
+      { digits: [8, 8], weight: 10, source: "thaiger", drawDate: "2026-08-18" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news, { newsRecencyHalfLifeDays: 1 });
+
+  // Then
+  // Position 4: +10 for 8, +5 for 9 -> 110 and 105 respectively.
+  assert.equal(biased.positions[4][8], 110);
+  assert.equal(biased.positions[4][9], 105);
+  // Position 5 mirrors the same weighting.
+  assert.equal(biased.positions[5][8], 110);
+  assert.equal(biased.positions[5][9], 105);
+  assert.equal(biased.newsInfluence.applied, 0.015);
+});
+
+test("applyNewsBias drops undated suggestions when other dated suggestions exist", () => {
+  // Given
+  const model = uniformModel();
+  const news = {
+    fetchedAt: "2026-08-18T10:00:00Z",
+    sources: [{ id: "thaiger" }],
+    suggestedNumbers: [
+      { digits: [7, 7], weight: 10, source: "thaiger", drawDate: "2026-08-18" },
+      { digits: [8, 8], weight: 10, source: "thaiger" },
+      { digits: [9, 9], weight: 10, source: "thaiger", drawDate: "2026-08-17" },
+    ],
+  };
+
+  // When
+  const biased = applyNewsBias(model, news, { newsRecencyHalfLifeDays: 1 });
+
+  // Then
+  // Only dated suggestions [7,7] and [9,9] are kept; [8,8] is ignored.
+  assert.equal(biased.newsInfluence.suggestions, 2);
+  assert.equal(biased.newsInfluence.applied, 0.015);
+});
+
+test("filterRecentNewsSuggestions keeps suggestions inside freshness window", () => {
+  // Given
+  const news = {
+    suggestedNumbers: [
+      { digits: [1, 2, 3], weight: 1, drawDate: "2026-08-16" },
+      { digits: [4, 5, 6], weight: 1, drawDate: "2026-07-01" },
+      { digits: [9, 8, 7], weight: 1, drawDate: "2026-08-05" },
+    ],
+  };
+
+  // When
+  const filtered = filterRecentNewsSuggestions(news, { staleDays: 14 });
+
+  // Then
+  assert.equal(filtered.suggestedNumbers.length, 2);
+  assert.equal(filtered._staleFilter.applied, true);
+  assert.equal(filtered._staleFilter.removedCount, 1);
+  const dates = filtered.suggestedNumbers
+    .map((suggestion) => suggestion.drawDate)
+    .sort();
+  assert.deepEqual(dates, ["2026-08-05", "2026-08-16"]);
+});
+
+test("filterRecentNewsSuggestions disables all suggestions when freshness is stale", () => {
+  // Given
+  const news = {
+    freshness: { hoursSinceLastDraw: 500 },
+    suggestedNumbers: [
+      { digits: [0, 0, 4], weight: 1, drawDate: "2026-08-16" },
+      { digits: [1, 1], weight: 1, drawDate: "2026-08-15" },
+    ],
+  };
+
+  // When
+  const filtered = filterRecentNewsSuggestions(news, { staleDays: 14 });
+
+  // Then
+  assert.equal(filtered.suggestedNumbers.length, 0);
+  assert.equal(filtered._staleFilter.applied, true);
+  assert.equal(filtered._staleFilter.removedCount, 2);
+  assert.ok(filtered._staleFilter.reason.includes("freshness"));
 });
