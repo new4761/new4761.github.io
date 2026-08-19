@@ -60,6 +60,18 @@ function formatDate(value) {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
+function formatStaleMs(ms) {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return "cache updated recently";
+  }
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) {
+    return `cache updated ${minutes}m ago`;
+  }
+  const hours = Math.round(minutes / 60);
+  return `cache updated ${hours}h ago`;
+}
+
 function hashText(value) {
   let hash = 2166136261;
   for (let index = 0; index < value.length; index += 1) {
@@ -224,6 +236,9 @@ function describeNewsInfluence(influence) {
 
 function describeNewsState() {
   if (!news || !Array.isArray(news.suggestedNumbers) || news.suggestedNumbers.length === 0) {
+    const cacheMeta = news && news._cache && Number.isFinite(news._cache.staleMs)
+      ? ` · ${formatStaleMs(news._cache.staleMs)}`
+      : "";
     const staleFilter = news && news._staleFilter;
     if (staleFilter && staleFilter.applied && staleFilter.removedCount > 0) {
       const reason = staleFilter.reason
@@ -231,7 +246,7 @@ function describeNewsState() {
         : "";
       return `News data removed ${staleFilter.removedCount} stale suggestion${
         staleFilter.removedCount === 1 ? "" : "s"
-      } — pure-history mode${reason}.`;
+      } — pure-history mode${reason}.${cacheMeta}`;
     }
     const cacheSource = news && news._cache && news._cache.source;
     if (cacheSource === "fallback-cache" || cacheSource === "304-not-modified") {
@@ -239,7 +254,7 @@ function describeNewsState() {
         cacheSource === "304-not-modified"
           ? "cached payload (304)"
           : "cached payload fallback";
-      return `News payload loaded from ${label}, but no active suggestions — pure-history mode.`;
+      return `News payload loaded from ${label}, but no active suggestions — pure-history mode.${cacheMeta}`;
     }
     return "News data unavailable — pure-history mode.";
   }
@@ -261,7 +276,10 @@ function describeNewsState() {
           news._validation.malformedSuggestionCount === 1 ? "" : "s"
         } removed`
       : "";
-  const cacheSuffix = news._cache && news._cache.source ? ` · ${news._cache.source}` : "";
+  const cacheSuffix =
+    news._cache && news._cache.source
+      ? ` · ${news._cache.source} · ${formatStaleMs(news._cache.staleMs || 0)}`
+      : "";
   return `${news.suggestedNumbers.length} suggestion${
     news.suggestedNumbers.length === 1 ? "" : "s"
   }${malformedSuffix} · ${recency}${staleSuffix}${cacheSuffix}`;
