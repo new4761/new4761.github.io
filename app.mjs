@@ -9,6 +9,8 @@ const MODEL_URLS = [
   "https://raw.githubusercontent.com/new4761/Thai_lottery_analysis/main/lottery_results.csv",
 ];
 const NEWS_URL = "/news.json";
+const NEWS_FETCH_TIMEOUT_MS = 6000;
+const MODEL_FETCH_TIMEOUT_MS = 12000;
 const DATA_SOURCE_URL = "https://github.com/new4761/Thai_lottery_analysis";
 const DATA_SOURCE_LABEL = "new4761/Thai_lottery_analysis";
 const FALLBACK_SAMPLE_COUNT = 120;
@@ -30,6 +32,23 @@ const pickList = document.querySelector("[data-pick-list]");
 let historicModel = null;
 let activeModel = null;
 let news = null;
+
+function isValidSuggestion(suggestion) {
+  const asDigits = suggestion?.digits;
+  if (!Array.isArray(asDigits)) {
+    return false;
+  }
+  const weight = suggestion?.weight;
+  return (
+    suggestion &&
+    typeof suggestion === "object" &&
+    asDigits.every((digit) => {
+      const parsed = Number(digit);
+      return Number.isInteger(parsed) && parsed >= 0 && parsed <= 9;
+    }) &&
+    Number.isFinite(weight)
+  );
+}
 
 function formatDate(value) {
   return new Intl.DateTimeFormat("en-GB", {
@@ -183,6 +202,16 @@ function showNumber(number) {
   status.textContent = "New number generated.";
 }
 
+async function fetchWithTimeout(input, options = {}, timeoutMs = NEWS_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 function pickCount() {
   if (!pickCountSelect) {
     return 1;
@@ -267,7 +296,7 @@ async function loadModel() {
 
   for (const modelUrl of MODEL_URLS) {
     try {
-      const response = await fetch(modelUrl);
+      const response = await fetchWithTimeout(modelUrl, { cache: "no-store" }, MODEL_FETCH_TIMEOUT_MS);
 
       if (!response.ok) {
         throw new Error(`Historical data request failed with ${response.status}`);
@@ -306,29 +335,43 @@ function markModelReady() {
 }
 
 async function initialize() {
-  const modelReady = (async () => {
+  const modelLoad = (async () => {
     try {
       await loadModel();
       markModelReady();
+      return;
     } catch {
       setFallbackModel();
     }
   })();
 
-  await Promise.all([modelReady, loadNews()]);
+  const newsLoad = loadNews().finally(() => {
+    // Make sure news-aware weighting is reflected as soon as it arrives.
+    rebuildActiveModel();
+  });
+
+  await modelLoad;
   rebuildActiveModel();
+  await newsLoad;
 }
 
 async function loadNews() {
   try {
-    const response = await fetch(NEWS_URL);
+    const response = await fetchWithTimeout(NEWS_URL, {}, NEWS_FETCH_TIMEOUT_MS);
 
     if (!response.ok) {
       return;
     }
     const parsed = await response.json();
-    if (parsed && typeof parsed === "object") {
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Array.isArray(parsed.suggestedNumbers) &&
+      parsed.suggestedNumbers.every(isValidSuggestion)
+    ) {
       news = parsed;
+    } else {
+      news = null;
     }
   } catch {
     // Network or parse failure — silently fall back to pure-history mode.
