@@ -79,6 +79,20 @@ jobs:
             fi
           fi
 
+          if [ ! -s lottery_results.csv ]; then
+            echo "::error::Downloaded lottery_results.csv is empty."
+            exit 1
+          fi
+
+          expected_header="date,first,second,third,fourth,fifth,last2,last3f,last3b,near1"
+          actual_header="$(head -n 1 lottery_results.csv | tr -d '\r')"
+          if [ "$actual_header" != "$expected_header" ]; then
+            echo "::error::Unexpected lottery_results.csv header."
+            echo "Expected: $expected_header"
+            echo "Actual:   $actual_header"
+            exit 1
+          fi
+
       - name: Commit synced CSV when changed
         if: steps.sync.outputs.changed == 'true'
         run: |
