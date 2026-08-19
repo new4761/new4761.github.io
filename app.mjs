@@ -306,14 +306,16 @@ function markModelReady() {
 }
 
 async function initialize() {
-  try {
-    await loadModel();
-    markModelReady();
-  } catch {
-    setFallbackModel();
-  }
+  const modelReady = (async () => {
+    try {
+      await loadModel();
+      markModelReady();
+    } catch {
+      setFallbackModel();
+    }
+  })();
 
-  await loadNews();
+  await Promise.all([modelReady, loadNews()]);
   rebuildActiveModel();
 }
 
