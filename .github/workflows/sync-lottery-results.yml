@@ -72,9 +72,15 @@ jobs:
           if [ -n "$source_commit_sha" ] && [ -n "$previous_source_sha" ] && [ "$source_commit_sha" = "$previous_source_sha" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "change_reason=source-commit-unchanged" >> "$GITHUB_OUTPUT"
-          elif [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+          elif [ -n "$source_sha" ] && [ -n "$previous_source_sha" ] && [ "$source_sha" = "$previous_source_sha" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "change_reason=source-input-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$incoming_sha" ] && [ ${#incoming_sha} -eq 64 ] && [ "$incoming_sha" = "$local_sha" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "change_reason=incoming-sha-unchanged" >> "$GITHUB_OUTPUT"
+          elif [ -n "$incoming_sha" ] && [ "$incoming_sha" = "$local_sha" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "change_reason=incoming-sha-different-format" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "change_reason=content-changed" >> "$GITHUB_OUTPUT"
@@ -86,9 +92,14 @@ jobs:
           if [ "${{ steps.sync.outputs.change_reason }}" = "source-commit-unchanged" ]; then
             echo "No changes to lottery_results.csv (source commit unchanged)."
             echo "Source commit already applied: ${{ steps.sync.outputs.previous_source_sha }}"
+          elif [ "${{ steps.sync.outputs.change_reason }}" = "source-input-unchanged" ]; then
+            echo "No changes to lottery_results.csv (source input commit unchanged)."
+            echo "Source commit already applied: ${{ steps.sync.outputs.source_sha }}"
           elif [ -n "${{ steps.sync.outputs.source_commit_date }}" ]; then
             echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
             echo "Latest source commit: ${{ steps.sync.outputs.source_commit_sha }} (${{ steps.sync.outputs.source_commit_date }})"
+          elif [ "${{ steps.sync.outputs.change_reason }}" = "incoming-sha-different-format" ]; then
+            echo "No changes to lottery_results.csv; incoming hash appears to be a source blob SHA while local is checksum."
           else
             echo "No changes to lottery_results.csv (hash matched ${{ steps.sync.outputs.incoming_sha }})."
           fi
