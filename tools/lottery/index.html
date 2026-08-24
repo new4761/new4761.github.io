@@ -49,7 +49,32 @@
 
       <section class="generator-panel" aria-labelledby="generator-title">
         <div class="panel-heading">
-          <h2 id="generator-title">Your number</h2>
+          <h2 id="generator-title">Generation mode</h2>
+          <p>Choose how to generate your number.</p>
+        </div>
+
+        <div class="mode-selector">
+          <button class="mode-btn active" data-mode="driven">📊 Data-Driven</button>
+          <button class="mode-btn" data-mode="pure">🎲 Pure Random</button>
+          <button class="mode-btn" data-mode="thai">🏛️ Thai-Aware</button>
+        </div>
+
+        <div class="mode-info">
+          <div class="mode-desc active" data-mode="driven">
+            <strong>Data-Driven</strong><br>Weighted by historical first-prize patterns (40% hot numbers, 60% random)
+          </div>
+          <div class="mode-desc" data-mode="pure">
+            <strong>Pure Random</strong><br>Cryptographically secure randomness, zero bias
+          </div>
+          <div class="mode-desc" data-mode="thai">
+            <strong>Thai-Aware</strong><br>Includes cultural luck and holiday patterns
+          </div>
+        </div>
+      </section>
+
+      <section class="generator-panel" aria-labelledby="generator-title2">
+        <div class="panel-heading">
+          <h2 id="generator-title2">Your number</h2>
           <p>
             Weighted by each digit position across historical first-prize draws.
           </p>
@@ -159,5 +184,136 @@
       <p>No tracking. No data leaves your browser.</p>
     </footer>
     <script type="module" src="/app.mjs?v=7"></script>
+    <script src="lottery_generator_web.js"></script>
+    <script>
+      let currentMode = 'driven';
+      let generator = null;
+
+      document.addEventListener('DOMContentLoaded', function() {
+        generator = new ThaiLotteryGenerator();
+        setupModeSelector();
+      });
+
+      function setupModeSelector() {
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            selectMode(this.dataset.mode);
+          });
+        });
+      }
+
+      function selectMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+          btn.classList.remove('active');
+        });
+        document.querySelector(`[data-mode="${mode}"].mode-btn`).classList.add('active');
+
+        document.querySelectorAll('.mode-desc').forEach(desc => {
+          desc.classList.remove('active');
+        });
+        document.querySelector(`.mode-desc[data-mode="${mode}"]`).classList.add('active');
+      }
+
+      // Hook into existing generate button
+      const generateBtn = document.querySelector('[data-generate]');
+      if (generateBtn) {
+        const originalClickHandler = generateBtn.onclick;
+        generateBtn.addEventListener('click', function(e) {
+          if (currentMode !== 'driven') {
+            e.stopImmediatePropagation();
+            generateFromMode();
+            return false;
+          }
+          // Let original handler run for 'driven' mode
+          if (originalClickHandler) originalClickHandler.call(this, e);
+        });
+      }
+
+      function generateFromMode() {
+        let numbers;
+        if (currentMode === 'pure') {
+          numbers = generator.generatePureRandom();
+        } else if (currentMode === 'thai') {
+          numbers = generator.generateThaiAware();
+        } else {
+          numbers = generator.generateDataDriven();
+        }
+
+        const output = document.querySelector('[data-number-output]');
+        if (output) {
+          output.textContent = numbers.first;
+          output.setAttribute('aria-label', `Generated number: ${numbers.first}`);
+        }
+
+        const status = document.querySelector('[data-action-status]');
+        if (status) {
+          status.textContent = `Generated using ${['Pure Random', 'Data-Driven', 'Thai-Aware'][['pure', 'driven', 'thai'].indexOf(currentMode)]} mode`;
+        }
+      }
+    </script>
+    <style>
+      .mode-selector {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .mode-btn {
+        padding: 12px 16px;
+        border: 2px solid var(--border-default);
+        background: var(--surface-muted);
+        color: var(--text-primary);
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+      }
+
+      .mode-btn:hover {
+        border-color: var(--accent-primary);
+        background: var(--surface-panel);
+      }
+
+      .mode-btn.active {
+        background: var(--accent-primary);
+        color: var(--text-on-accent);
+        border-color: var(--accent-primary);
+      }
+
+      .mode-info {
+        background: var(--surface-muted);
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        border: 1px solid var(--border-default);
+      }
+
+      .mode-desc {
+        display: none;
+        font-size: 0.95rem;
+        line-height: 1.5;
+        color: var(--text-secondary);
+      }
+
+      .mode-desc.active {
+        display: block;
+      }
+
+      .mode-desc strong {
+        color: var(--text-primary);
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        .mode-btn {
+          background: var(--surface-muted);
+          border-color: var(--border-default);
+        }
+      }
+    </style>
   </body>
 </html>
